@@ -172,17 +172,30 @@ def load_data():
             st.error("❌ CSV ist leer!")
             return None
         
-        # Replace German umlauts to avoid encoding issues
-        umlaut_map = {
-            'ü': 'ue', 'Ü': 'Ue',
-            'ö': 'oe', 'Ö': 'Oe',
-            'ä': 'ae', 'Ä': 'Ae',
-            'ß': 'ss'
+        # Fix malformed encoding characters (from latin1 encoding issues)
+        char_fix_map = {
+            '\x81': 'ue',  # Malformed ü
+            '\x94': 'oe',  # Malformed ö
+            '\x84': 'ae',  # Malformed ä
+            '\x9a': 'Ue',  # Malformed Ü
+            '\x99': 'Oe',  # Malformed Ö
+            '\x8e': 'Ae',  # Malformed Ä
+            '\xe1': 'ss',  # Malformed ß
         }
         
-        # Apply to all string columns
+        # Apply to all string columns - fix malformed characters AND normal umlauts
         for col in df.select_dtypes(include=['object']).columns:
-            df[col] = df[col].astype(str).replace(umlaut_map, regex=True)
+            # First fix malformed encoding characters
+            for bad_char, replacement in char_fix_map.items():
+                df[col] = df[col].astype(str).str.replace(bad_char, replacement, regex=False)
+            # Then replace any remaining normal umlauts
+            df[col] = df[col].str.replace('ü', 'ue', regex=False)
+            df[col] = df[col].str.replace('Ü', 'Ue', regex=False)
+            df[col] = df[col].str.replace('ö', 'oe', regex=False)
+            df[col] = df[col].str.replace('Ö', 'Oe', regex=False)
+            df[col] = df[col].str.replace('ä', 'ae', regex=False)
+            df[col] = df[col].str.replace('Ä', 'Ae', regex=False)
+            df[col] = df[col].str.replace('ß', 'ss', regex=False)
         
         # Columns should already be numeric with decimal=',' but ensure it
         numeric_cols = ['Sozialindex', 'Schueler_Pro_Lehrkraft', 'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro']
