@@ -189,12 +189,19 @@ def load_data():
 
 def create_correlation_heatmap(df):
     """VIZ 100: Korrelations-Heatmap"""
-    stadt_agg = df.groupby('Kreis').agg({
+    # Drop rows with NaN values
+    df_clean = df.dropna(subset=['Sozialindex', 'Schueler_Pro_Lehrkraft', 
+                                  'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro']).copy()
+    
+    stadt_agg = df_clean.groupby('Kreis').agg({
         'Sozialindex': 'mean',
         'Schueler_Pro_Lehrkraft': 'mean',
         'Einkommen_Pro_Einwohner_Euro': 'mean',
         'Bildungsausgaben_Euro': 'mean'
     }).reset_index()
+    
+    # Drop any NaN that might result from aggregation
+    stadt_agg = stadt_agg.dropna()
     
     corr_matrix = stadt_agg[['Sozialindex', 'Schueler_Pro_Lehrkraft', 
                               'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro']].corr()
@@ -428,18 +435,22 @@ def create_gymnasium_schulanzahl(df):
 
 def create_schulformen_boxplot(df):
     """VIZ 01: Schulformen Boxplot"""
-    schulformen = df['Schulform'].value_counts()
+    # Filter out rows with NaN Sozialindex
+    df_clean = df.dropna(subset=['Sozialindex']).copy()
+    
+    schulformen = df_clean['Schulform'].value_counts()
     top_schulformen = schulformen[schulformen >= 10].index.tolist()
-    df_filtered = df[df['Schulform'].isin(top_schulformen)].copy()
+    df_filtered = df_clean[df_clean['Schulform'].isin(top_schulformen)].copy()
     
     fig = go.Figure()
     for schulform in sorted(df_filtered['Schulform'].unique()):
-        data = df_filtered[df_filtered['Schulform'] == schulform]
-        fig.add_trace(go.Box(
-            y=data['Sozialindex'],
-            name=schulform,
-            boxmean='sd'
-        ))
+        data = df_filtered[df_filtered['Schulform'] == schulform]['Sozialindex'].dropna()
+        if len(data) > 0:  # Only add if data exists
+            fig.add_trace(go.Box(
+                y=data,
+                name=schulform,
+                boxmean='sd'
+            ))
     
     fig.update_layout(
         title='Sozialindex-Verteilung nach Schulform',
