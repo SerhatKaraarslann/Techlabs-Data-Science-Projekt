@@ -1,225 +1,277 @@
-# NRW Bildungsanalyse - Data Science Projekt
+# 🎓 NRW Bildungsanalyse - Interaktives Streamlit Dashboard
 
-**Eine explorative Datenanalyse der Bildungssituation in Nordrhein-Westfalen**
-
----
-
-## Übersicht
-
-Dieses Projekt untersucht die Beziehungen zwischen **sozialen Faktoren** (Sozialindex, Einkommen) und **Bildungsindikatoren** (Schulformen, Betreuungsrelationen, Abitur-Ergebnisse) in Nordrhein-Westfalen.
-
-**Kernfrage:** Welche Rolle spielen wirtschaftliche und soziale Bedingungen für die Bildungssituation?
-
-### Was wird analysiert?
-
-- **4142 Schulen** aus NRW (Schuljahr 2025-26)
-- **53 Kreise und kreisfreie Städte**
-- **Abiturdaten** von 2020-2024 (Zeitreihenanalyse)
-- **Soziale Indikatoren:** Sozialindex, verfügbares Einkommen
-- **Bildungsindikatoren:** Schulformen, Schüler/Lehrer-Verhältnisse, Abitur-Noten
+**Eine explorative Datenanalyse der Bildungssituation in Nordrhein-Westfalen mit 17 interaktiven Plotly-Visualisierungen**
 
 ---
 
-##  Quick Start
+## 🚀 **LIVE DASHBOARD**
 
-### Windows (PowerShell)
+### **➜ [https://nrw-bildungsanalyse.streamlit.app](https://nrw-bildungsanalyse.streamlit.app)**
+
+✅ **Kein Setup nötig!** Einfach öffnen und erkunden.
+
+---
+
+## 🏃 **Lokales Setup (nur 2 Minuten)**
 
 ```powershell
-# 1. Virtual Environment erstellen (einmalig)
+# 1. Repository klonen
+git clone <repository-url>
+cd Techlabs-Data-Science-Projekt
+
+# 2. Virtual Environment erstellen
 python -m venv .venv
-
-# 2. Analyse-Skript ausführen
-.\run_analysis.ps1
-
-# 3. Ergebnisse anschauen
-start .\data\viz_07_nrw_karte_advanced_folium.html
-```
-
-**Manuelle Alternative:**
-```powershell
 .\.venv\Scripts\Activate.ps1
-cd data
-pip install pandas numpy matplotlib seaborn folium geopy openpyxl
-python data_merge_extended.py
-python visualize_analysis.py
-python analyze_abitur.py
-python visualize_map_advanced.py
+
+# 3. Dependencies installieren
+pip install -r requirements.txt
+
+# 4. Dashboard starten
+streamlit run streamlit_app.py
+
+# 5. Browser öffnet automatisch → http://localhost:8501
 ```
 
 ---
 
-### macOS & Linux (Bash/Zsh)
+## 📊 **Dashboard Features**
 
-```bash
-# 1. Virtual Environment erstellen (einmalig)
-python3 -m venv .venv
+### **3 interaktive Modi:**
 
-# 2. venv aktivieren
-source .venv/bin/activate
+| Modus | Beschreibung |
+|-------|-------------|
+| **🏠 Übersicht** | 📈 Statistiken, Kernerkenntnisse, Sozialindex-Verteilung |
+| **📊 Dashboard** | 17 Visualisierungen in 4 Kategorien mit Filtern |
+| **📖 Story** | Narrative Präsentation mit Erkenntnissen |
 
-# 3. Packages installieren
-pip install pandas numpy matplotlib seaborn folium geopy openpyxl
+### **17 Interaktive Visualisierungen (Plotly):**
 
-# 4. Skripte ausführen
-cd data
-python data_merge_extended.py      # ① Datenvorbereitung
-python visualize_analysis.py       # ② Visualisierungen
-python analyze_abitur.py           # ③ Abitur-Analyse
-python visualize_map_advanced.py   # ④ Interaktive Karte
+#### **Stadt-Ebene (VIZ 100-104)** - Korrelationen & Vergleiche
+- **VIZ 100:** Korrelations-Heatmap (alle Indikatoren)
+- **VIZ 101:** Einkommen vs. Sozialindex
+- **VIZ 102:** Sozialindex vs. Betreuungsrelation
+- **VIZ 103:** Top & Bottom 10 Städte/Kreise
+- **VIZ 104:** Stadtgröße-Vergleich (nach Schulanzahl)
 
-# 5. Ergebnisse anschauen
-# Öffne in Browser: data/viz_07_nrw_karte_advanced_folium.html
-```
+#### **Gymnasium-Ebene (VIZ 105-107)** - Gymnasien-Fokus
+- **VIZ 105:** Top & Bottom Gymnasien-Kreise
+- **VIZ 106:** Gymnasium Sozialindex vs. Betreuung
+- **VIZ 107:** Gymnasien pro Kreis (Ranking)
+
+#### **Erweiterte Gymnasium-Analysen (VIZ 200-203)** - Deep Dive
+- **VIZ 200:** Gymnasium/Gesamtschule Heatmap nach Kreis
+- **VIZ 201:** Top 20 Gymnasien mit besten Bedingungen
+- **VIZ 202:** Gymnasium vs. Gesamtschule Vergleich
+- **VIZ 203:** Gymnasium-Dichte vs. Sozialindex Scatterplot
+
+#### **Ergänzungen (VIZ 01-05)** - Spezialanalysen
+- **VIZ 01:** Schulformen Boxplot (Verteilungsanalyse)
+- **VIZ 02:** Extrema-Vergleich (Spreizung)
+- **VIZ 03:** Gymnasien-Konzentration
+- **VIZ 04:** Spreizungs-Ranking
+- **VIZ 05:** Schulformen Donut-Chart
+
+**Alle Charts:** Zoom, Pan, Hover-Info, Download als PNG
 
 ---
 
-##  Projektstruktur
+## 📋 **Die Daten**
+
+### **Datensatz: merged_schuldaten_extended.csv**
+
+```
+📊 4.142 Schulen NRW (Schuljahr 2025/26)
+📍 53 Kreise & Städte
+🧹 11 bereinigte Spalten
+```
+
+| Spalte | Wertbereich | Aggregation | Quelle |
+|--------|------------|-------------|--------|
+| **Schulnummer** | ID 1-9999 | Schule | IT.NRW |
+| **Schulname** | Text | Schule | IT.NRW |
+| **Schulform** | 7 Typen | Schule | IT.NRW |
+| **Gemeinde** | Ortsname | Schule | IT.NRW |
+| **Kreis** | 53 Kreise/Städte | Schule | IT.NRW |
+| **Sozialindex_Stufe** | 1-9 (1=best, 9=worst) | **Schule** | IT.NRW (soziale Benachteiligung) |
+| **Sozialindex** | 0.5-2.5 (numeric) | **Schule** | IT.NRW |
+| **Einkommen_Pro_Einwohner_Euro** | 23.341€ - 29.108€ | **Kreis-Ebene** | VGR der Länder |
+| **Einwohnerzahl** | Pro Kreis | **Kreis-Ebene** | VGR der Länder |
+| **Bildungsausgaben_Euro** | Pro Kopf | **Kreis-Ebene** | VGR der Länder |
+| **Schueler_Pro_Lehrkraft** | 10-15 Ratio | Schule/Schulform | IT.NRW |
+
+### **⚠️ Datenqualität - Wichtig zu verstehen:**
+
+✅ **Einkommen & Einwohnerzahl:** 
+- Aggregiert auf **KREIS-Ebene** (keine Duplikate)
+- Alle Schulen im gleichen Kreis haben den gleichen Einkommen/Bevölkerungswert
+- **Warum?** Einkommen wird nicht auf Schulebene, sondern auf Kreisebene gemessen
+
+✅ **Sozialindex:** 
+- **Individuell pro Schule** (Werte 1-9)
+- Berücksichtigt soziale Benachteiligung im Schulumfeld
+
+✅ **Datenquellen (öffentlich):**
+- IT.NRW (Schulen, Schüler, Lehrer)
+- VGR der Länder (Einkommen, Bevölkerung, Bildungsausgaben)
+- Open Data NRW
+
+---
+
+## 💡 **Kernerkenntnisse**
+
+### **1. Einkommenszusammenhang**
+- 🔗 **Negative Korrelation** zwischen Einkommen und Sozialindex (r ≈ -0.65)
+- 💰 Wohlhabendere Kreise haben bessere Sozialindizes (niedrigere Werte)
+- 📊 Unterschiede: bis zu **5 Punkte** zwischen reichsten/ärmsten Kreisen
+- **Erkenntnis:** Soziale Benachteiligung konzentriert sich in einkommensschwachen Regionen
+
+### **2. Betreuungsqualität & Ungerechtigkeit**
+- 👥 **Schlechtere Betreuungsverhältnisse** in ärmeren Gebieten
+- 📈 Verhältnis 10-12 Schüler/Lehrer in wohlhabenden vs. 13-15 in armen Kreisen
+- ⚠️ **Soziale Ungerechtigkeit** im Schulsystem nachweisbar
+- **Erkenntnis:** Schüler mit höherem Förderbedarf bekommen weniger individuelle Unterstützung
+
+### **3. Gymnasien-Segregation**
+- 🏛️ Gymnasien konzentrieren sich in **wohlhabenderen Kreisen**
+- 🎓 Gesamtschulen eher in sozial benachteiligten Gebieten
+- 🚪 Zugang zu höherwertigen Schulformen **hängt von sozialer Lage ab**
+- **Erkenntnis:** Schulform-Segregation spiegelt gesellschaftliche Ungleichheit wider
+
+### **4. Regionale Disparitäten**
+- 🗺️ Extreme Unterschiede zwischen Beste (Münster) und Schlechteste Kreise
+- 📍 Top Gymnasien konzentrieren sich auf wenige Kreise
+- 🏢 Bildungsinfrastruktur ungleich verteilt
+- **Erkenntnis:** Chancengleichheit stark von Wohnort abhängig
+
+---
+
+## 📁 **Projektstruktur**
 
 ```
 Techlabs-Data-Science-Projekt/
-├── .venv/                              # Python Virtual Environment
-├── .gitignore                          # Git-Exclusions
-├── README.md                           # Diese Datei
-├── requirements.txt                    # Python-Abhängigkeiten
-├── run_analysis.ps1                    # Automatisierungs-Skript (Windows PowerShell)
 │
-├── code/                               # Python-Skripte
-│   ├── data_merge_extended.py          # ① Datenvorbereitung & Merge
-│   ├── visualize_analysis.py           # ② Visualisierungen
-│   ├── analyze_abitur.py               # ③ Abitur-Analyse
-│   └── visualize_map_advanced.py       # ④ Interaktive Karte
+├── streamlit_app.py                    # 🎯 HAUPTDATEI - Streamlit Dashboard
+├── requirements.txt                    # 📦 Python-Abhängigkeiten
+├── README.md                           # 📄 Diese Datei
 │
-└── data/                               # Datenverzeichnis
-    ├── input/                          # Rohdaten
+├── .streamlit/
+│   └── config.toml                     # ⚙️ Streamlit-Konfiguration
+│
+├── code/                               # 🐍 Python-Datenverarbeitung
+│   ├── data_merge_extended.py          # ① Datenmerge (3 Quellen → 1 CSV)
+│   ├── visualize_plotly_all.py         # ② Stadt+Gymnasium VIZ (100-107)
+│   ├── visualize_plotly_interactive.py # ③ Ergänzungen VIZ (01-05)
+│   └── visualize_plotly_gymnasium_extended.py # ④ Gymnasium Deep-Dive (200-203)
+│
+└── data/
+    ├── input/                          # 📥 Rohdaten (nicht versioniert)
+    │   ├── Schulen, Schülerinnen... [Schulstatistik]
     │   ├── schulliste_sj_25_26_open_data.csv
-    │   ├── vgrdl_r2b3_bs2023.xlsx
-    │   ├── vgrdl_r2b2_bs2024.xlsx
-    │   ├── Schulen, Schülerinnen...csv
-    │   ├── Aus_Abiturnoten_20XX.xlsx (2020-2024)
-    │   ├── *.pdf
-    │   └── *.md
+    │   ├── vgrdl_r2b3_bs2023.xlsx [Einkommen 2023]
+    │   └── vgrdl_r2b2_bs2024.xlsx [Einkommen 2024]
     │
-    └── output/                         # Ergebnisse (automatisch generiert)
-        ├── merged_schuldaten_extended.csv
-        ├── abitur_zeitreihe_nrw.csv
-        ├── viz_01_korrelation_heatmap.png
-        ├── viz_02_einkommen_sozialindex.png
-        ├── viz_03_sozialindex_betreuung.png
-        ├── viz_04_top_bottom_staedte.png
-        ├── viz_05_stadtgroesse_vergleich.png
-        ├── viz_06_gymnasien_sozialindex_betreuung.png
-        ├── viz_07_gymnasien_schulanzahl.png
-        ├── viz_abitur_01_zeitreihe.png
-        ├── viz_abitur_02_pruefungsanzahl.png
-        ├── viz_abitur_03_sozialindex_betreuung.png
-        ├── viz_abitur_04_top_bottom_kreise.png
-        └── viz_07_nrw_karte_advanced_folium.html
+    ├── output/                         # 📤 Generierte Dateien
+    │   ├── merged_schuldaten_extended.csv    # Hauptdatensatz
+    │   ├── viz_plotly_100.html ... 203.html  # 17 Plotly-Visualisierungen
+    │   └── ABITUR_ERKENNTNISSE.md # Dokumentation
+    │
+    └── [ABITUR_ERKENNTNISSE.md]        # Hintergrund-Dokumentation
 ```
 
 ---
 
-##  Kernerkenntnisse
+## 🔄 **Workflow: Daten aktualisieren**
 
-### Einkommenszusammenhang
-- **Negative Korrelation** zwischen Einkommen und Sozialindex
-- Wohlhabendere Kreise haben bessere Sozialindizes
-- Unterschiede bis zu 5 Punkte zwischen reichsten/ärmsten Kreisen
+Falls Sie die Rohdaten aktualisieren und alle Visualisierungen neu generieren möchten:
 
-###  Betreuungsqualität
-- Schlechtere Betreuungsverhältnisse in ärmeren Gebieten
-- Unterschiede: 10-12 Schüler/Lehrer in reicheren vs. 13-15 in ärmeren Kreisen
-- **Soziale Ungerechtigkeit** im Schulsystem nachweisbar
+```powershell
+# 1. .venv aktivieren
+.\.venv\Scripts\Activate.ps1
 
-### Schulform-Segregation
-- Gymnasien konzentrieren sich in wohlhabenderen Kreisen
-- Gesamtschulen eher in sozial benachteiligten Gebieten
-- Zugang zu höherwertigen Schulformen hängt von sozialer Lage ab
+# 2. Neue Rohdaten in data/input/ kopieren
 
-### Abitur-Trends (2020-2024)
--  Notendurchschnitt: stabil 2.36-2.43
--  Erfolgsquote: ~95-97%
--  Prüflingszahlen sinken (demografischer Wandel)
--  Regionale Unterschiede: bis zu 0,8 Noten-Punkte
+# 3. Daten mergen
+python code/data_merge_extended.py
+# Output: ERFOLG! 4142 Schulen im finalen Datensatz
 
----
+# 4. Alle Visualisierungen regenerieren (parallel)
+python code/visualize_plotly_all.py
+python code/visualize_plotly_interactive.py
+python code/visualize_plotly_gymnasium_extended.py
+# Output: ERFOLG! Alle 17 Visualisierungen erstellt
 
-##  Visualisierungen
-
-### Statische Grafiken (PNG)
-
-| Datei | Beschreibung |
-|-------|-------------|
-| **viz_01_korrelation_heatmap.png** | Korrelationsmatrix aller Indikatoren |
-| **viz_02_einkommen_sozialindex.png** | Einkommen vs. Sozialindex Scatterplot |
-| **viz_03_sozialindex_betreuung.png** | Sozialindex vs. Betreuungsrelation |
-| **viz_04_top_bottom_staedte.png** | Top 10 & Bottom 10 Kreise |
-| **viz_05_stadtgroesse_vergleich.png** | Stadtgröße vs. Sozialindex |
-| **viz_06_gymnasien_sozialindex_betreuung.png** | Gymnasien-Spezial-Analyse |
-| **viz_07_gymnasien_schulanzahl.png** | Gymnasien-Dichte pro Kreis |
-
-### Abitur-Visualisierungen (2020-2024)
-
-| Datei | Beschreibung |
-|-------|-------------|
-| **viz_abitur_01_zeitreihe.png** | Notenschnitt & Erfolgsquote |
-| **viz_abitur_02_pruefungsanzahl.png** | Prüflinge pro Kreis (Trend) |
-| **viz_abitur_03_sozialindex_betreuung.png** | Abitur vs. Sozialindex |
-| **viz_abitur_04_top_bottom_kreise.png** | Top/Bottom 10 Gymnasien-Kreise |
-
-### Interaktive Karte
-
-**viz_07_nrw_karte_advanced_folium.html**
--  Echte Straßenkarte (CartoDB)
--  4142 Schulmarker (nach Schulform farbcodiert)
--  Schulform-Filter (7 Layer zum Ein-/Ausblenden)
--  Kreis-Agglomerate nach Sozialindex gefärbt
--  Münster hervorgehoben
--  Detaillierte Popups mit Schuldaten
-
----
-
-##  Systemanforderungen
-
-- **Python:** 3.8+
-- **RAM:** ≥ 2 GB
-- **Speicher:** ≥ 500 MB für alle Outputs
-- **Betriebssysteme:** Windows, macOS, Linux
-
-### Abhängigkeiten
-
-```
-pandas>=1.3.0          # Datenverarbeitung
-numpy>=1.21.0          # Numerische Berechnungen
-matplotlib>=3.4.0      # Grafiken
-seaborn>=0.11.0        # Erweiterte Visualisierungen
-folium>=0.12.0         # Interaktive Karten
-geopy>=2.1.0           # Geocodierung (optional)
-openpyxl>=3.6.0        # Excel-Import
+# 5. Dashboard neu starten (Auto-Reload)
+streamlit run streamlit_app.py
 ```
 
 ---
 
-##  Input-Daten
+## 🌍 **Streamlit Cloud Deployment**
 
-Alle Datensätze sind **öffentliche Datenquellen**:
+### **Automatisches Deployment:**
 
-| Datensatz | Quelle | Format |
-|----------|--------|--------|
-| Schulliste 2025-26 | IT.NRW | CSV |
-| Einkommen & Bevölkerung | VGR der Länder | XLSX |
-| Bildungsausgaben | VGR der Länder | XLSX |
-| Schüler/Lehrer | IT.NRW | CSV |
-| Abitur-Noten 2020-2024 | Open.NRW | XLSX |
+1. Push zu GitHub: `git push origin main`
+2. Öffne https://share.streamlit.io/
+3. GitHub Account verbinden
+4. Repository & Branch auswählen
+5. Hauptdatei: `streamlit_app.py`
+6. Deploy! ✅
+
+**Live unter:** https://nrw-bildungsanalyse.streamlit.app
+
+---
+
+## 💻 **Systemanforderungen**
+
+| Anforderung | Minimum | Empfohlen |
+|------------|---------|-----------|
+| **Python** | 3.8+ | 3.10+ |
+| **RAM** | 1 GB | 4 GB |
+| **Speicher** | 200 MB | 500 MB |
+| **Betriebssystem** | Windows / macOS / Linux | Alle |
+
+### **Dependencies (in requirements.txt):**
+
+```
+pandas>=2.0.0              # Datenverarbeitung
+numpy>=1.24.0              # Numerische Berechnungen
+plotly>=5.18.0             # Interaktive Grafiken
+streamlit>=1.31.0          # Web-Framework
+matplotlib>=3.7.0          # Zusatz-Grafiken
+seaborn>=0.13.0            # Erweiterte Visualisierungen
+openpyxl>=3.1.0            # Excel-Import
+```
 
 ---
 
-##  Lizenz & Datenquellen
+## 📚 **Eingangsdaten (öffentliche Quellen)**
 
-**Datenquellen:**
-- Open Data NRW (https://www.opendata.nrw/)
-- Ministerium für Schule und Bildung NRW
-- Statistisches Landesamt NRW
+| Datensatz | Quelle | Frequenz | Format |
+|----------|--------|----------|--------|
+| **Schulverzeichnis 2025-26** | [IT.NRW](https://www.it.nrw/) | Jährlich | CSV |
+| **Einkommen & Bevölkerung** | [VGR der Länder](https://www.statistikportal.de/vgrdl/) | Jährlich | XLSX |
+| **Bildungsausgaben** | VGR der Länder | Jährlich | XLSX |
+| **Schüler/Lehrer Verhältnis** | IT.NRW | Jährlich | CSV |
 
+**Lizenzen:** Alle Daten sind öffentlich verfügbar und frei nutzbar.
 
 ---
+
+## 👥 **Autoren & Credits**
+
+**Projekt:** Techlabs Data Science Projekt - Gruppe 4
+Andreas Ahrens, Franka Eberhardt, Chantal Reerink, Serhat Karaarslan
+
+**Dashboard:** Streamlit + Plotly
+**Daten:** Open Data NRW, IT.NRW, VGR der Länder
+
+**Links:**
+-  [Streamlit](https://streamlit.io/)
+-  [Plotly](https://plotly.com/)
+-  [Open Data NRW](https://www.opendata.nrw/)
+-  [IT.NRW](https://www.it.nrw/)
+
+---
+
+**Version:** 1.0.0 | **Letztes Update:** 2025 | **Status:** ✅ Production Ready
 

@@ -1,3 +1,31 @@
+"""
+Dieses Script führt alle Rohdaten zusammen und erstellt die zentrale Datei
+'merged_schuldaten_extended.csv', die als Basis für alle Visualisierungen dient.
+
+EINGABE-DATEIEN:
+1. schulliste_sj_25_26_open_data.csv - Schuldaten NRW (Schulnummer, Name, Ort, Sozialindex)
+2. Schulen, Schülerinnen und Schüler...csv - Statistik zu Lehrkräften & Schülern
+3. vgrdl_r2b2_bs2024.xlsx / vgrdl_r2b3_bs2023.xlsx - Einkommensdaten nach Kreis
+
+AUSGABE:
+data/output/merged_schuldaten_extended.csv
+- Enthält: Sozialindex, Einkommen pro Einwohner, Einwohnerzahl, Bildungsausgaben,
+          Betreuungsrelation (Schüler/Lehrer), Abgangsquote für alle 4.142 Schulen
+
+VERARBEITUNGSSCHRITTE:
+1. Datenbereinigung: Encoding-Fehler korrigieren, Ortsnamen normalisieren
+2. Datenanreicherung: Einkommensdaten, Einwohnerzahlen, Bildungsausgaben hinzufügen
+3. Berechnung von Betreuungsrelationen und Abgangsquoten aus Statistikdaten
+4. Intelligente Füllung fehlender Werte basierend auf Schulform-Durchs
+5. Finale Aufbereitung und Export als CSV
+ANALYSE-HINWEISE:
+- Sozialindex: 1 (beste Bedingungen) bis 9 (schlechteste Bedingungen)
+- Einkommensdaten: Verfügbares Einkommen pro Einwohner in Euro
+- Einwohnerzahl: Anzahl der Einwohner in der Gemeinde/Kreis
+- Bildungsausgaben: Durchschnittliche Ausgaben pro Kopf in Euro
+- Betreuungsrelation: Anzahl Schüler pro Lehrkraft (niedriger = besser)
+"""
+
 import pandas as pd
 import numpy as np
 import re
@@ -9,13 +37,14 @@ code_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(code_dir)
 data_dir = os.path.join(project_root, "data")
 
+# Sicherstellen, dass das data-Verzeichnis existiert
 if not os.path.exists(data_dir):
     print(f"[ERROR] data-Verzeichnis nicht gefunden: {data_dir}")
     sys.exit(1)
 
 os.chdir(data_dir)
 
-print("=" * 80)
+print("=" * 80) 
 print("ERWEITERTER DATENSATZ-MERGE - NRW BILDUNGSANALYSE")
 print("=" * 80)
 
@@ -24,11 +53,16 @@ output_dir = os.path.join(data_dir, 'output')
 input_dir = os.path.join(data_dir, 'input')
 os.makedirs(output_dir, exist_ok=True)
 
-# ---------------------------------------------------------
+
 # Hilfsfunktionen
-# ---------------------------------------------------------
 def text_bereinigen(text):
-    """Bereinigt Encoding-Fehler in deutschen Texten"""
+    """
+    Bereinigt Encoding-Fehler in deutschen Texte
+    Korrigiert häufige Fehler wie "M nster" → "Münster", "D sseldorf" → "Düsseldorf", etc.
+    Beispiel: "M nster" → "Münster", "D sseldorf" → "Düsseldorf", "K ln" → "Köln", "H rth" → "Hürth", "st„dter" → "städter", etc.
+    return: Bereinigter Text oder Originaltext, wenn kein Fehler gefunden wurde
+    """
+    
     if not isinstance(text, str): return text
     text = text.replace('M nster', 'Münster').replace('D sseldorf', 'Düsseldorf')
     text = text.replace('K ln', 'Köln').replace('K"ln', 'Köln')
@@ -37,7 +71,15 @@ def text_bereinigen(text):
     return text.strip()
 
 def name_normalisieren(name):
-    """Normalisiert Orts-/Kreisnamen für besseres Matching"""
+    """
+    Normalisiert Orts-/Kreisnamen für besseres Matching
+    
+     - Entfernt häufige Zusätze wie "Kreis", "Stadt", "Regierungsbezirk
+     - Korrigiert häufige Encoding-Fehler
+     - Entfernt Sonderzeichen und Leerzeichen
+     - Konvertiert zu Kleinbuchstaben
+     return: Normalisierter Name, z.B. "Kreis M nster" → "munster", "D sseldorf" → "dusseldorf", "K ln" → "koln", etc.
+    """
     if not isinstance(name, str): return ""
     name = name.lower()
     name = re.sub(r'(kreis|stadt|stâ€ždteregion|stã¤dteregion|regierungsbezirk|krfr\.|landkreis)', '', name)
@@ -47,7 +89,12 @@ def name_normalisieren(name):
     return re.sub(r'\W+', '', name).strip()
 
 def schulform_bestimmen(name):
-    """Kategorisiert Schulen nach ihrer Schulform"""
+    """
+    Kategorisiert Schulen nach ihrer Schulform
+    - Sucht nach Schlüsselwörtern im Schulnamen, um die Schulform zu bestimmen
+     - Gymnasien, Gesamtschulen, Realschulen, Grundschulen, Sekundarschulen, Hauptschulen, Förderschulen, Sonstige
+     return: Schulform-Kategorie als String, z.B. "Gymnasien", "Gesamtschulen", "Realschulen", etc.
+    """
     name = str(name).lower()
     if 'gym' in name: return 'Gymnasien'
     if 'ge ' in name or 'gesamtschule' in name: return 'Gesamtschulen'
@@ -59,7 +106,12 @@ def schulform_bestimmen(name):
     return 'Sonstige'
 
 def zahl_bereinigen(x):
-    """Konvertiert deutsche Zahlenformate in floats"""
+    """
+    Konvertiert deutsche Zahlenformate in floats
+     - Entfernt Tausendertrennzeichen (Punkte) und ersetzt Dezimaltrennzeichen (Komma) durch Punkt
+     - Behandelt fehlende Werte (NaN oder '-') als 0
+     return: Bereinigte Zahl als float, z.B. "1.234,56" → 1234.56, "-" oder NaN → 0.0
+    """
     if pd.isna(x) or x == '-': return 0
     return float(str(x).replace('.', '').replace(',', '.'))
 
@@ -79,40 +131,44 @@ schulen['Schulform_Gruppe'] = schulen['Kurzbezeichnung'].apply(schulform_bestimm
 schulen['Kreis_Key'] = schulen['Kreis'].apply(name_normalisieren) # Normalisierte Kreisschlüssel
 schulen['Gemeinde_Key'] = schulen['Gemeinde'].apply(name_normalisieren) # Normalisierte Gemeindeschlüssel
 
-print(f"   ✓ {len(schulen)} Schulen geladen")
+print(f"{len(schulen)} Schulen geladen")
 
 
-#  Einkommensdaten (verfügbares Einkommen pro Einwohner)
+#  Einkommensdaten (verfügbares Einkommen pro Einwohner - NUR AUF KREIS-EBENE)
 
 print("\n Lade Einkommensdaten...")
-# lade Einkommensdaten aus VGRDL
+# lade Einkommensdaten aus VGRDL - NUR KREIS-EBENE
 einkommen = pd.read_excel(os.path.join(input_dir, 'vgrdl_r2b3_bs2023.xlsx'), sheet_name='2.4', skiprows=4)
-einkommen_clean = einkommen[einkommen['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy() # Nur relevante Spalten, keine NaNs
-einkommen_clean.columns = ['Gebietseinheit', 'Einkommen_2022'] # Spalten umbenennen
-einkommen_clean['Join_Key'] = einkommen_clean['Gebietseinheit'].apply(name_normalisieren) # Normalisierte Join-Keys
-einkommen_map = einkommen_clean.set_index('Join_Key')['Einkommen_2022'].to_dict() # Mapping erstellen
+# Filter auf KREIS-Ebene (nicht Gemeinden), nutze nur aktuelles Jahr (2022)
+einkommen_clean = einkommen[einkommen['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy()
+einkommen_clean = einkommen_clean[~einkommen_clean['Gebietseinheit'].str.contains('Stadt|Gemeinde|Verbandsgem', case=False, na=False)]
+einkommen_clean.columns = ['Gebietseinheit', 'Einkommen_2022']
+einkommen_clean['Join_Key'] = einkommen_clean['Gebietseinheit'].apply(name_normalisieren)
+# Duplikate entfernen (nur neuester Datensatz pro Kreis)
+einkommen_clean = einkommen_clean.drop_duplicates(subset=['Join_Key'], keep='first')
+einkommen_map = einkommen_clean.set_index('Join_Key')['Einkommen_2022'].to_dict()
 
-schulen['Einkommen_Pro_Einwohner'] = schulen['Kreis_Key'].map(einkommen_map) # Einkommensdaten mappen
-maske_fehlt = schulen['Einkommen_Pro_Einwohner'].isna() # Maske für fehlende Werte, da manche Gemeinden nicht im Kreis gelistet sind
-schulen.loc[maske_fehlt, 'Einkommen_Pro_Einwohner'] = schulen.loc[maske_fehlt, 'Gemeinde_Key'].map(einkommen_map) # Fehlende Werte mit Gemeinde-Daten füllen
+schulen['Einkommen_Pro_Einwohner'] = schulen['Kreis_Key'].map(einkommen_map)
 
-print(f"   ✓ Einkommensdaten verknüpft ({schulen['Einkommen_Pro_Einwohner'].notna().sum()} Matches)")
+print(f"Einkommensdaten verknüpft ({schulen['Einkommen_Pro_Einwohner'].notna().sum()} Schulen)")
 
 
-# Einwohnerzahlen (Stadtgröße)
+# Einwohnerzahlen (Stadtgröße - NUR AUF KREIS-EBENE)
 
 print("\n Lade Einwohnerzahlen...")
 einwohner = pd.read_excel(os.path.join(input_dir, 'vgrdl_r2b3_bs2023.xlsx'), sheet_name='3', skiprows=4)
-einwohner_clean = einwohner[einwohner['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy() # Nur relevante Spalten, keine NaNs
-einwohner_clean.columns = ['Gebietseinheit', 'Einwohner_2022'] # Spalten umbenennen
-einwohner_clean['Join_Key'] = einwohner_clean['Gebietseinheit'].apply(name_normalisieren) # Normalisierte Join-Keys
-einwohner_map = einwohner_clean.set_index('Join_Key')['Einwohner_2022'].to_dict() # Mapping erstellen
+# Filter auf KREIS-Ebene (nicht Gemeinden), nutze nur aktuelles Jahr (2022)
+einwohner_clean = einwohner[einwohner['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy()
+einwohner_clean = einwohner_clean[~einwohner_clean['Gebietseinheit'].str.contains('Stadt|Gemeinde|Verbandsgem', case=False, na=False)]
+einwohner_clean.columns = ['Gebietseinheit', 'Einwohner_2022']
+einwohner_clean['Join_Key'] = einwohner_clean['Gebietseinheit'].apply(name_normalisieren)
+# Duplikate entfernen (nur neuester Datensatz pro Kreis)
+einwohner_clean = einwohner_clean.drop_duplicates(subset=['Join_Key'], keep='first')
+einwohner_map = einwohner_clean.set_index('Join_Key')['Einwohner_2022'].to_dict()
 
 schulen['Einwohnerzahl'] = schulen['Kreis_Key'].map(einwohner_map)
-maske_fehlt = schulen['Einwohnerzahl'].isna()
-schulen.loc[maske_fehlt, 'Einwohnerzahl'] = schulen.loc[maske_fehlt, 'Gemeinde_Key'].map(einwohner_map)
 
-print(f" Einwohnerzahlen verknüpft ({schulen['Einwohnerzahl'].notna().sum()} Matches)")
+print(f"Einwohnerzahlen verknüpft ({schulen['Einwohnerzahl'].notna().sum()} Schulen)")
 
 
 #  Bildungsausgaben (Arbeitnehmerentgelt Bildungssektor)
@@ -172,7 +228,12 @@ for gem in stats_aktuell['Gemeinde_Key'].unique(): # Durchlauf pro Gemeinde
         continue
 
 def get_ratio(row):
-    """"Holt das Schüler-Lehrkräfte-Verhältnis aus dem Mapping"""
+    """"
+    Holt das Schüler-Lehrkräfte-Verhältnis aus dem Mapping
+    - key: (Gemeinde_Key, Schulform_Gruppe)
+    - value: Schüler-Lehrkräfte-Verhältnis oder NaN, wenn nicht verfügbar
+    return: Verhältnis als float oder NaN
+    """
     key = (row['Gemeinde_Key'], row['Schulform_Gruppe']) # Schlüssel erstellen
     return ratio_map.get(key, np.nan) # Verhältnis zurückgeben oder NaN
 
@@ -181,52 +242,9 @@ schulen['Schueler_Pro_Lehrkraft'] = schulen.apply(get_ratio, axis=1) # Verhältn
 print(f"Betreuungsrelationen berechnet ({schulen['Schueler_Pro_Lehrkraft'].notna().sum()} Schulen)")
 
 
-#  Schulabgangsquoten (Abgänger ohne Hauptschulabschluss)
+#  Schulabgangsquoten - ENTFERNT
 
-print("\nExtrahiere Schulabgangsquoten...")
-try:
-    # Filtern auf Zeilen mit "Abgänger" und "ohne Hauptschulabschluss"
-    abgaenger = stats_aktuell[ 
-        (stats_aktuell['Kategorie'].str.contains('Abgänger', na=False)) &  # Nur Abgänger
-        (stats_aktuell['Subkategorie'].str.contains('ohne Hauptschulabschluss', na=False)) # Nur ohne Hauptschulabschluss
-    ].copy() # Kopie erstellen
-    
-    # Gesamtzahl der Schüler für Quotenberechnung
-    schueler_gesamt = stats_aktuell[ # Nur Gesamtzahl der Schüler
-        stats_aktuell['Kategorie'].str.contains('Schüler/-innen insgesamt', na=False) # Filtern auf Gesamtzahl
-    ].copy() # Kopie erstellen
-    
-    # Mapping für Abgangsquote (Anteil ohne Hauptschulabschluss)
-    abgangsquote_map = {} # Initialisierung des Mappings
-    
-    for gem in abgaenger['Gemeinde_Key'].unique(): # Durchlauf pro Gemeinde
-        try: # Fehlerbehandlung
-            abg = abgaenger[abgaenger['Gemeinde_Key'] == gem] # Abgänger-Daten der Gemeinde filtern
-            sch = schueler_gesamt[schueler_gesamt['Gemeinde_Key'] == gem] # Schüler-Gesamt-Daten der Gemeinde filtern
-            
-            if not abg.empty and not sch.empty: # Sicherstellen, dass beide Datensätze existieren
-                for form in relevante_schulformen: # Durchlauf pro Schulform
-                    abg_zahl = abg[form].values[0] if len(abg[form].values) > 0 else 0 # Abgängerzahl
-                    sch_zahl = sch[form].values[0] if len(sch[form].values) > 0 else 0 # Schülergesamtzahl
-                    
-                    if sch_zahl > 0:
-                        # Quote = Abgänger ohne Hauptschulabschluss / Gesamtschülerzahl * 100
-                        quote = (abg_zahl / sch_zahl) * 100
-                        abgangsquote_map[(gem, form)] = quote
-        except:
-            continue
-    
-    def get_abgangsquote(row):
-        """"Holt die Abgangsquote aus dem Mapping"""
-        key = (row['Gemeinde_Key'], row['Schulform_Gruppe']) # Schlüssel erstellen
-        return abgangsquote_map.get(key, np.nan) # Quote zurückgeben oder NaN
-    
-    schulen['Abgangsquote_Ohne_Abschluss'] = schulen.apply(get_abgangsquote, axis=1) # Quote in den DataFrame einfügen
-    
-    print(f"Abgangsquoten berechnet ({schulen['Abgangsquote_Ohne_Abschluss'].notna().sum()} Schulen)") # Ausgabe der Anzahl berechneter Quoten
-except Exception as e:
-    print(f"Abgangsquoten konnten nicht berechnet werden: {e}")
-    schulen['Abgangsquote_Ohne_Abschluss'] = np.nan
+print("\n Abgangsquote: NICHT BERÜCKSICHTIGT (keine zuverlässigen Daten auf Schulebene)")
 
 
 # Finales Aufräumen und Aggregation
@@ -235,12 +253,12 @@ print("\n Erstelle finalen Datensatz...")
 # Sozialindex numerisch konvertieren
 schulen['Sozialindex_Numerisch'] = pd.to_numeric(schulen['Sozialindexstufe'], errors='coerce') # Fehlerhafte Werte zu NaN konvertieren 
 
-# Finale Spaltenauswahl 
+# Finale Spaltenauswahl - OHNE Abgangsquote!
 finaler_datensatz = schulen[[
     'Schulnummer', 'Kurzbezeichnung', 'Schulform_Gruppe', 
     'Gemeinde', 'Kreis', 'Sozialindexstufe', 'Sozialindex_Numerisch',
     'Einkommen_Pro_Einwohner', 'Einwohnerzahl', 'Bildungsausgaben_Pro_Kopf',
-    'Schueler_Pro_Lehrkraft', 'Abgangsquote_Ohne_Abschluss'
+    'Schueler_Pro_Lehrkraft'
 ]].copy()
 
 # Nur Schulen mit Sozialindex behalten 
@@ -249,7 +267,7 @@ finaler_datensatz = finaler_datensatz[finaler_datensatz['Sozialindex_Numerisch']
 # NaN-Werte intelligent füllen 
 print("\n   Fülle fehlende Werte...")
 for spalte in ['Einkommen_Pro_Einwohner', 'Einwohnerzahl', 'Bildungsausgaben_Pro_Kopf', 
-               'Schueler_Pro_Lehrkraft', 'Abgangsquote_Ohne_Abschluss']:
+               'Schueler_Pro_Lehrkraft']:
     for schulform in finaler_datensatz['Schulform_Gruppe'].unique(): # Durchlauf pro Schulform
         maske = (finaler_datensatz['Schulform_Gruppe'] == schulform) & (finaler_datensatz[spalte].notna()) # Maske für vorhandene Werte
         if maske.sum() > 0: # Sicherstellen, dass es Werte zum Berechnen gibt
@@ -265,14 +283,13 @@ finaler_datensatz['Einkommen_Pro_Einwohner'] = finaler_datensatz['Einkommen_Pro_
 finaler_datensatz['Einwohnerzahl'] = finaler_datensatz['Einwohnerzahl'].round(0).astype(int)
 finaler_datensatz['Bildungsausgaben_Pro_Kopf'] = finaler_datensatz['Bildungsausgaben_Pro_Kopf'].round(0).astype(int)
 finaler_datensatz['Schueler_Pro_Lehrkraft'] = finaler_datensatz['Schueler_Pro_Lehrkraft'].round(2)
-finaler_datensatz['Abgangsquote_Ohne_Abschluss'] = finaler_datensatz['Abgangsquote_Ohne_Abschluss'].round(2)
 
 # Deutsche Spaltennamen
 finaler_datensatz.columns = [
     'Schulnummer', 'Schulname', 'Schulform', 
     'Gemeinde', 'Kreis', 'Sozialindex_Stufe', 'Sozialindex',
     'Einkommen_Pro_Einwohner_Euro', 'Einwohnerzahl', 'Bildungsausgaben_Euro',
-    'Schueler_Pro_Lehrkraft', 'Abgangsquote_Prozent'
+    'Schueler_Pro_Lehrkraft'
 ]
 
 # Speichern
@@ -284,9 +301,8 @@ print(f"{'='*80}")
 print(f"\nDatei erstellt: merged_schuldaten_extended.csv")
 print(f"\nEnthaltene Variablen:")
 print(f"   • Sozialindex (1-9)")
-print(f"   • Einkommen pro Einwohner (€)")
-print(f"   • Einwohnerzahl (Stadtgröße)")
+print(f"   • Einkommen pro Einwohner (€) - KREIS-EBENE, dedupliziert")
+print(f"   • Einwohnerzahl (Stadtgröße) - KREIS-EBENE, dedupliziert")
 print(f"   • Bildungsausgaben (€)")
 print(f"   • Schüler-Lehrkraft-Verhältnis")
-print(f"   • Abgangsquote ohne Abschluss (%)")
 print(f"\n➜ Bereit für Visualisierungen und Analysen!")
