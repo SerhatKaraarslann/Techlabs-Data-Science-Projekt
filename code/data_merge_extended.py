@@ -120,6 +120,16 @@ print("\n Lade Schulliste...")
 # Schulliste laden
 schulen = pd.read_csv(os.path.join(input_dir, 'schulliste_sj_25_26_open_data.csv'), sep=';', encoding='latin1')
 
+# Umlauts ersetzen in allen String-Spalten (für bessere Kompatibilität)
+umlaut_map = {
+    'ü': 'ue', 'Ü': 'Ue',
+    'ö': 'oe', 'Ö': 'Oe',
+    'ä': 'ae', 'Ä': 'Ae',
+    'ß': 'ss'
+}
+for col in schulen.select_dtypes(include=['object']).columns:
+    schulen[col] = schulen[col].astype(str).replace(umlaut_map, regex=True)
+
 # Relevante Spalten auswählen und umbenennen
 spalten_zum_bereinigen = ['Kurzbezeichnung', 'Bezirksregierung', 'Kreis', 'Gemeinde']
 for spalte in spalten_zum_bereinigen:

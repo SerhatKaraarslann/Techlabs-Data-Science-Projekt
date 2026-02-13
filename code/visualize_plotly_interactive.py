@@ -79,6 +79,16 @@ try:
     df = pd.read_csv(os.path.join(output_dir, 'merged_schuldaten_extended.csv'), 
                      sep=';', decimal=',', encoding='utf-8-sig')
     
+    # Umlauts ersetzen in allen String-Spalten
+    umlaut_map = {
+        'ü': 'ue', 'Ü': 'Ue',
+        'ö': 'oe', 'Ö': 'Oe',
+        'ä': 'ae', 'Ä': 'Ae',
+        'ß': 'ss'
+    }
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype(str).replace(umlaut_map, regex=True)
+    
     # Convert string columns to numeric
     df['Sozialindex'] = pd.to_numeric(df['Sozialindex'], errors='coerce')
     df['Schueler_Pro_Lehrkraft'] = pd.to_numeric(df['Schueler_Pro_Lehrkraft'], errors='coerce')
