@@ -42,19 +42,17 @@ if not os.path.exists(data_dir):
     print(f"[ERROR] data-Verzeichnis nicht gefunden: {data_dir}")
     sys.exit(1)
 
-os.chdir(data_dir)
+# NO os.chdir() - use absolute paths instead
+input_dir = os.path.join(data_dir, 'input')
+output_dir = os.path.join(data_dir, 'output')
+os.makedirs(output_dir, exist_ok=True)
 
 print("=" * 80) 
 print("ERWEITERTER DATENSATZ-MERGE - NRW BILDUNGSANALYSE")
 print("=" * 80)
-
-# Ensure output directory exists
-output_dir = os.path.join(data_dir, 'output')
-input_dir = os.path.join(data_dir, 'input')
-os.makedirs(output_dir, exist_ok=True)
-
-
-# Hilfsfunktionen
+print(f"Input-Verzeichnis: {input_dir}")
+print(f"Output-Verzeichnis: {output_dir}")
+print()
 def text_bereinigen(text):
     """
     Bereinigt Encoding-Fehler in deutschen Texte
