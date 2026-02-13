@@ -29,48 +29,47 @@ import unicodedata
 import warnings
 import subprocess
 import sys
+import re
 warnings.filterwarnings('ignore')
 
 #  GENERATE DATA ON STARTUP IF MISSING 
+def generate_merged_csv():
+    """Generate CSV using the working data_merge_extended.py script."""
+    try:
+        output_dir = os.path.join(os.path.dirname(__file__), 'data', 'output')
+        script_path = os.path.join(os.path.dirname(__file__), 'code', 'data_merge_extended.py')
+        
+        # Execute the script in current working directory
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(__file__)
+        )
+        
+        # Check if CSV exists now
+        csv_path = os.path.join(output_dir, 'merged_schuldaten_extended.csv')
+        return os.path.exists(csv_path)
+    except Exception as e:
+        return False
+
+@st.cache_resource
 def ensure_data_exists():
-    """Generate merged data if it doesn't exist."""
-    data_path = os.path.join('data', 'output', 'merged_schuldaten_extended.csv')
-    if not os.path.exists(data_path):
-        st.info("📊 Generiere Daten beim ersten Start...")
-        try:
-            # Get project root directory
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = script_dir
-            
-            # Run data merge script with absolute project root as working directory
-            result = subprocess.run(
-                [sys.executable, os.path.join(project_root, 'code', 'data_merge_extended.py')],
-                cwd=project_root,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            
-            # Check if CSV was created (success even if script had Unicode errors)
-            if os.path.exists(data_path):
+    """Ensure data exists, generate if missing."""
+    csv_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'merged_schuldaten_extended.csv')
+    
+    if not os.path.exists(csv_path):
+        with st.spinner("📊 Generiere Daten beim ersten Start..."):
+            if generate_merged_csv():
                 st.success("✅ Daten erfolgreich generiert!")
-                return True
+                st.rerun()
             else:
-                st.error(f"❌ Daten konnten nicht generiert werden")
-                st.error(f"Script Output: {result.stderr[:500]}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            st.error("❌ Datengenerierung hat zu lange gedauert (>5 Min)")
-            return False
-        except Exception as e:
-            st.error(f"❌ Fehler beim Generieren der Daten: {str(e)}")
-            return False
+                st.error("❌ Fehler beim Generieren der Daten - CSV konnte nicht erstellt werden")
     return True
 
 # Call at startup
-if not ensure_data_exists():
-    st.stop()
+ensure_data_exists()
 
 #  PAGE CONFIG 
 st.set_page_config(
@@ -129,8 +128,8 @@ def normalize_name(name):
 def load_data():
     """Load merged school data with caching."""
     try:
-        data_path = os.path.join('data', 'output', 'merged_schuldaten_extended.csv')
-        df = pd.read_csv(data_path, sep=';', decimal=',', encoding='utf-8-sig')
+        data_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'merged_schuldaten_extended.csv')
+        df = pd.read_csv(data_path, sep=';', encoding='utf-8-sig')
         df['Sozialindex'] = pd.to_numeric(df['Sozialindex'], errors='coerce')
         df['Schueler_Pro_Lehrkraft'] = pd.to_numeric(df['Schueler_Pro_Lehrkraft'], errors='coerce')
         df['Einkommen_Pro_Einwohner_Euro'] = pd.to_numeric(df['Einkommen_Pro_Einwohner_Euro'], errors='coerce')
