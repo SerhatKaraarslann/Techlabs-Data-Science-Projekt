@@ -153,18 +153,36 @@ def normalize_name(name):
     return ' '.join(txt.lower().split())
 
 @st.cache_data
+@st.cache_data
 def load_data():
     """Load merged school data with caching."""
     try:
         data_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'merged_schuldaten_extended.csv')
+        
+        # Check if file exists
+        if not os.path.exists(data_path):
+            st.error(f"❌ Datei nicht gefunden: {data_path}")
+            return None
+        
         df = pd.read_csv(data_path, sep=';', encoding='utf-8-sig')
+        
+        # Verify data
+        if df is None or len(df) == 0:
+            st.error("❌ CSV ist leer!")
+            return None
+        
+        # Convert columns to numeric
         df['Sozialindex'] = pd.to_numeric(df['Sozialindex'], errors='coerce')
         df['Schueler_Pro_Lehrkraft'] = pd.to_numeric(df['Schueler_Pro_Lehrkraft'], errors='coerce')
         df['Einkommen_Pro_Einwohner_Euro'] = pd.to_numeric(df['Einkommen_Pro_Einwohner_Euro'], errors='coerce')
         df['Bildungsausgaben_Euro'] = pd.to_numeric(df['Bildungsausgaben_Euro'], errors='coerce')
+        
+        st.info(f"✅ Daten geladen: {len(df)} Schulen")
         return df
     except Exception as e:
-        st.error(f"Fehler beim Laden der Daten: {e}")
+        st.error(f"❌ Fehler beim Laden der Daten: {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())
         return None
 
 # VISUALIZATION FUNCTIONS 
