@@ -40,9 +40,10 @@ share/python-wheels/
 .env.local
 
 # Data Outputs (optional - keep only with git lfs for large files)
-data/output/*.csv
+# EXCEPT: merged_schuldaten_extended.csv is needed for Streamlit Cloud
 data/output/*.html
 data/output/*.png
+!data/output/merged_schuldaten_extended.csv
 
 # Caches
 .cache/
