@@ -172,6 +172,18 @@ def load_data():
             st.error("❌ CSV ist leer!")
             return None
         
+        # Replace German umlauts to avoid encoding issues
+        umlaut_map = {
+            'ü': 'ue', 'Ü': 'Ue',
+            'ö': 'oe', 'Ö': 'Oe',
+            'ä': 'ae', 'Ä': 'Ae',
+            'ß': 'ss'
+        }
+        
+        # Apply to all string columns
+        for col in df.select_dtypes(include=['object']).columns:
+            df[col] = df[col].astype(str).replace(umlaut_map, regex=True)
+        
         # Columns should already be numeric with decimal=',' but ensure it
         numeric_cols = ['Sozialindex', 'Schueler_Pro_Lehrkraft', 'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro']
         for col in numeric_cols:
