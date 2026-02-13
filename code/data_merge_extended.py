@@ -117,18 +117,34 @@ def zahl_bereinigen(x):
 #  Laden und Bereinigen der Schulliste
 
 print("\n Lade Schulliste...")
-# Schulliste laden
-schulen = pd.read_csv(os.path.join(input_dir, 'schulliste_sj_25_26_open_data.csv'), sep=';', encoding='latin1')
+# Schulliste laden - Encoding-Fehler ignorieren und reparieren
+schulen = pd.read_csv(os.path.join(input_dir, 'schulliste_sj_25_26_open_data.csv'), sep=';', encoding='latin1', encoding_errors='ignore')
 
-# Umlauts ersetzen in allen String-Spalten (für bessere Kompatibilität)
-umlaut_map = {
-    'ü': 'ue', 'Ü': 'Ue',
-    'ö': 'oe', 'Ö': 'Oe',
-    'ä': 'ae', 'Ä': 'Ae',
-    'ß': 'ss'
+# Fehlerhafte Zeichen ersetzen (aus fehlerhaftem Encoding)
+# \x81 -> ü/ö (depends on context), \x94 -> ö
+char_fix_map = {
+    '\x81': 'ue',  # Falsch kodiertes ü
+    '\x94': 'oe',  # Falsch kodiertes ö
+    '\x84': 'ae',  # Falsch kodiertes ä
+    '\x9a': 'Ue',  # Falsch kodiertes Ü
+    '\x99': 'Oe',  # Falsch kodiertes Ö
+    '\x8e': 'Ae',  # Falsch kodiertes Ä
+    '\xe1': 'ss',  # Falsch kodiertes ß
 }
+
+# Fehlerhafte Zeichen + normale Umlauts ersetzen
 for col in schulen.select_dtypes(include=['object']).columns:
-    schulen[col] = schulen[col].astype(str).replace(umlaut_map, regex=True)
+    # Erst fehlerhafte Encoding-Zeichen
+    for bad_char, replacement in char_fix_map.items():
+        schulen[col] = schulen[col].astype(str).str.replace(bad_char, replacement, regex=False)
+    # Dann normale Umlauts (falls noch vorhanden)
+    schulen[col] = schulen[col].str.replace('ü', 'ue', regex=False)
+    schulen[col] = schulen[col].str.replace('Ü', 'Ue', regex=False)
+    schulen[col] = schulen[col].str.replace('ö', 'oe', regex=False)
+    schulen[col] = schulen[col].str.replace('Ö', 'Oe', regex=False)
+    schulen[col] = schulen[col].str.replace('ä', 'ae', regex=False)
+    schulen[col] = schulen[col].str.replace('Ä', 'Ae', regex=False)
+    schulen[col] = schulen[col].str.replace('ß', 'ss', regex=False)
 
 # Relevante Spalten auswählen und umbenennen
 spalten_zum_bereinigen = ['Kurzbezeichnung', 'Bezirksregierung', 'Kreis', 'Gemeinde']
@@ -293,14 +309,14 @@ finaler_datensatz['Bildungsausgaben_Pro_Kopf'] = finaler_datensatz['Bildungsausg
 finaler_datensatz['Schueler_Pro_Lehrkraft'] = finaler_datensatz['Schueler_Pro_Lehrkraft'].round(2)
 
 # Umlauts in finalen Daten ersetzen (nochmal, für Output-CSV)
-umlaut_map_final = {
-    'ü': 'ue', 'Ü': 'Ue',
-    'ö': 'oe', 'Ö': 'Oe',
-    'ä': 'ae', 'Ä': 'Ae',
-    'ß': 'ss'
-}
 for col in finaler_datensatz.select_dtypes(include=['object']).columns:
-    finaler_datensatz[col] = finaler_datensatz[col].astype(str).replace(umlaut_map_final, regex=True)
+    finaler_datensatz[col] = finaler_datensatz[col].astype(str).str.replace('ü', 'ue', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('Ü', 'Ue', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('ö', 'oe', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('Ö', 'Oe', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('ä', 'ae', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('Ä', 'Ae', regex=False)
+    finaler_datensatz[col] = finaler_datensatz[col].str.replace('ß', 'ss', regex=False)
 
 # Deutsche Spaltennamen
 finaler_datensatz.columns = [
