@@ -54,6 +54,29 @@ def generate_merged_csv():
     except Exception as e:
         return False
 
+def generate_visualizations():
+    """Generate all visualization HTML files."""
+    try:
+        viz_scripts = [
+            'code/visualize_plotly_all.py',
+            'code/visualize_plotly_interactive.py',
+            'code/visualize_plotly_gymnasium_extended.py'
+        ]
+        
+        for script_name in viz_scripts:
+            script_path = os.path.join(os.path.dirname(__file__), script_name)
+            if os.path.exists(script_path):
+                subprocess.run(
+                    [sys.executable, script_path],
+                    capture_output=True,
+                    text=True,
+                    cwd=os.path.dirname(__file__),
+                    timeout=120
+                )
+        return True
+    except Exception as e:
+        return False
+
 @st.cache_resource
 def ensure_data_exists():
     """Ensure data exists, generate if missing."""
@@ -63,6 +86,13 @@ def ensure_data_exists():
         with st.spinner("📊 Generiere Daten beim ersten Start..."):
             if generate_merged_csv():
                 st.success("✅ Daten erfolgreich generiert!")
+                # Generate visualizations after data
+                with st.spinner("📈 Generiere Visualisierungen..."):
+                    generate_visualizations()
+                    st.success("✅ Visualisierungen erstellt!")
+                st.rerun()
+            else:
+                st.error("❌ Fehler beim Generieren der Daten")
                 st.rerun()
             else:
                 st.error("❌ Fehler beim Generieren der Daten - CSV konnte nicht erstellt werden")
