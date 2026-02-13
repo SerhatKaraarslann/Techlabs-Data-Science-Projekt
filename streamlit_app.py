@@ -845,6 +845,13 @@ def main():
     elif app_mode == "📈 Dashboard":
         st.title("📈 Interaktives Dashboard")
         
+        # Debug info
+        with st.expander("🔍 Debug Info"):
+            st.write(f"**DataFrame Shape:** {df.shape}")
+            st.write(f"**Columns:** {df.columns.tolist()}")
+            st.write(f"**Sample Data:**")
+            st.dataframe(df.head(3))
+        
         # Category selection
         category = st.sidebar.selectbox(
             "Kategorie wählen:",
@@ -867,7 +874,16 @@ def main():
             
             if "100" in viz:
                 st.subheader("VIZ 100: Korrelations-Heatmap")
-                st.plotly_chart(create_correlation_heatmap(df), use_container_width=True)
+                try:
+                    fig = create_correlation_heatmap(df)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.error("❌ Chart konnte nicht erstellt werden")
+                except Exception as e:
+                    st.error(f"❌ Fehler bei Chart-Erstellung: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
                     - **Negative Korrelation** zwischen Einkommen und Sozialindex (höheres Einkommen = niedrigerer SI)
