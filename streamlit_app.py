@@ -94,8 +94,6 @@ def ensure_data_exists():
             else:
                 st.error("❌ Fehler beim Generieren der Daten")
                 st.rerun()
-            else:
-                st.error("❌ Fehler beim Generieren der Daten - CSV konnte nicht erstellt werden")
     return True
 
 # Call at startup
