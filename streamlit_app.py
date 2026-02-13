@@ -38,11 +38,33 @@ def ensure_data_exists():
     if not os.path.exists(data_path):
         st.info("📊 Generiere Daten beim ersten Start...")
         try:
-            subprocess.run([sys.executable, 'code/data_merge_extended.py'], 
-                          cwd=os.getcwd(), check=True, capture_output=True)
-            st.success("✅ Daten erfolgreich generiert!")
+            # Get project root directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = script_dir
+            
+            # Run data merge script with absolute project root as working directory
+            result = subprocess.run(
+                [sys.executable, os.path.join(project_root, 'code', 'data_merge_extended.py')],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            
+            # Check if CSV was created (success even if script had Unicode errors)
+            if os.path.exists(data_path):
+                st.success("✅ Daten erfolgreich generiert!")
+                return True
+            else:
+                st.error(f"❌ Daten konnten nicht generiert werden")
+                st.error(f"Script Output: {result.stderr[:500]}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            st.error("❌ Datengenerierung hat zu lange gedauert (>5 Min)")
+            return False
         except Exception as e:
-            st.error(f"❌ Fehler beim Generieren der Daten: {e}")
+            st.error(f"❌ Fehler beim Generieren der Daten: {str(e)}")
             return False
     return True
 
