@@ -27,7 +27,28 @@ from plotly.subplots import make_subplots
 import os
 import unicodedata
 import warnings
+import subprocess
+import sys
 warnings.filterwarnings('ignore')
+
+#  GENERATE DATA ON STARTUP IF MISSING 
+def ensure_data_exists():
+    """Generate merged data if it doesn't exist."""
+    data_path = os.path.join('data', 'output', 'merged_schuldaten_extended.csv')
+    if not os.path.exists(data_path):
+        st.info("📊 Generiere Daten beim ersten Start...")
+        try:
+            subprocess.run([sys.executable, 'code/data_merge_extended.py'], 
+                          cwd=os.getcwd(), check=True, capture_output=True)
+            st.success("✅ Daten erfolgreich generiert!")
+        except Exception as e:
+            st.error(f"❌ Fehler beim Generieren der Daten: {e}")
+            return False
+    return True
+
+# Call at startup
+if not ensure_data_exists():
+    st.stop()
 
 #  PAGE CONFIG 
 st.set_page_config(
