@@ -292,6 +292,16 @@ finaler_datensatz['Einwohnerzahl'] = finaler_datensatz['Einwohnerzahl'].round(0)
 finaler_datensatz['Bildungsausgaben_Pro_Kopf'] = finaler_datensatz['Bildungsausgaben_Pro_Kopf'].round(0).astype(int)
 finaler_datensatz['Schueler_Pro_Lehrkraft'] = finaler_datensatz['Schueler_Pro_Lehrkraft'].round(2)
 
+# Umlauts in finalen Daten ersetzen (nochmal, für Output-CSV)
+umlaut_map_final = {
+    'ü': 'ue', 'Ü': 'Ue',
+    'ö': 'oe', 'Ö': 'Oe',
+    'ä': 'ae', 'Ä': 'Ae',
+    'ß': 'ss'
+}
+for col in finaler_datensatz.select_dtypes(include=['object']).columns:
+    finaler_datensatz[col] = finaler_datensatz[col].astype(str).replace(umlaut_map_final, regex=True)
+
 # Deutsche Spaltennamen
 finaler_datensatz.columns = [
     'Schulnummer', 'Schulname', 'Schulform', 
