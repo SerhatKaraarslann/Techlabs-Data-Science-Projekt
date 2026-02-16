@@ -139,6 +139,37 @@ st.markdown("""
         border-radius: 0.25rem;
         margin: 1rem 0;
     }
+    .dashboard-box {
+        background: #e0f2fe;
+        border-left: 4px solid #0284c7;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin: 1rem 0;
+    }
+    .story-box {
+        background: #f3e8ff;
+        border-left: 4px solid #7c3aed;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin: 1rem 0;
+    }
+    .mode-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+    .mode-badge.dashboard {
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #7dd3fc;
+    }
+    .mode-badge.story {
+        background: #f3e8ff;
+        color: #6d28d9;
+        border: 1px solid #c4b5fd;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -176,6 +207,13 @@ def normalize_name(name):
     txt = txt.replace('ae', 'a').replace('oe', 'o').replace('ue', 'u')
     txt = ''.join(ch for ch in txt if ch.isalnum() or ch.isspace() or ch == '-')
     return ' '.join(txt.lower().split())
+
+def get_gymnasium_ebene_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Filtere Gymnasien/Gesamtschulen inkl. Varianten."""
+    schulformen = {'gymnasium', 'gymnasien', 'gesamtschule', 'gesamtschulen'}
+    source = df['Schulform_Clean'] if 'Schulform_Clean' in df.columns else df['Schulform']
+    clean = source.astype(str).str.lower()
+    return df[clean.isin(schulformen)].copy()
 
 def top_bottom_kreise_by(df, value_col, n=3):
     """Return top and bottom Kreise by mean of value_col."""
@@ -494,8 +532,8 @@ def create_stadtgroesse_vergleich(df):
     return fig
 
 def create_gymnasium_top_bottom(df):
-    """VIZ 105: Gymnasium Top/Bottom Kreise"""
-    gym_df = df[df['Schulform'] == 'Gymnasien'].copy()
+    """VIZ 105: Gymnasien/Gesamtschulen Top/Bottom Kreise"""
+    gym_df = get_gymnasium_ebene_df(df)
     gym_count = gym_df.groupby('Kreis').size().reset_index(name='Anzahl_Gymnasien')
     
     top10 = gym_count.nlargest(10, 'Anzahl_Gymnasien')
@@ -519,17 +557,17 @@ def create_gymnasium_top_bottom(df):
     )
     
     fig.update_layout(
-        title_text="Gymnasien-Dichte: Top & Bottom 10 Kreise",
+        title_text="Gymnasien/Gesamtschulen: Top & Bottom 10 Kreise",
         height=600,
         showlegend=False
     )
-    fig.update_xaxes(title_text="Anzahl Gymnasien", row=1, col=1)
-    fig.update_xaxes(title_text="Anzahl Gymnasien", row=1, col=2)
+    fig.update_xaxes(title_text="Anzahl Gymnasien/Gesamtschulen", row=1, col=1)
+    fig.update_xaxes(title_text="Anzahl Gymnasien/Gesamtschulen", row=1, col=2)
     return fig
 
 def create_gymnasium_sozialindex(df):
-    """VIZ 106: Gymnasium Sozialindex vs. Betreuung"""
-    gym_df = df[df['Schulform'] == 'Gymnasien'].copy()
+    """VIZ 106: Gymnasien/Gesamtschulen Sozialindex vs. Betreuung"""
+    gym_df = get_gymnasium_ebene_df(df)
     gym_agg = gym_df.groupby('Kreis').agg({
         'Sozialindex': 'mean',
         'Schueler_Pro_Lehrkraft': 'mean'
@@ -540,7 +578,7 @@ def create_gymnasium_sozialindex(df):
         x='Sozialindex',
         y='Schueler_Pro_Lehrkraft',
         text='Kreis',
-        title='Gymnasien: Sozialindex vs. Betreuungsrelation',
+        title='Gymnasien/Gesamtschulen: Sozialindex vs. Betreuungsrelation',
         labels={
             'Sozialindex': 'Durchschnittlicher Sozialindex',
             'Schueler_Pro_Lehrkraft': 'Schüler pro Lehrkraft'
@@ -554,8 +592,8 @@ def create_gymnasium_sozialindex(df):
     return fig
 
 def create_gymnasium_schulanzahl(df):
-    """VIZ 107: Gymnasien pro Kreis"""
-    gym_df = df[df['Schulform'] == 'Gymnasien'].copy()
+    """VIZ 107: Gymnasien/Gesamtschulen pro Kreis"""
+    gym_df = get_gymnasium_ebene_df(df)
     gym_count = gym_df.groupby('Kreis').size().reset_index(name='Anzahl_Gymnasien')
     gym_count_sorted = gym_count.sort_values('Anzahl_Gymnasien', ascending=True)
     
@@ -571,8 +609,8 @@ def create_gymnasium_schulanzahl(df):
     ))
     
     fig.update_layout(
-        title='Anzahl Gymnasien pro Kreis/Stadt',
-        xaxis_title='Anzahl Gymnasien',
+        title='Anzahl Gymnasien/Gesamtschulen pro Kreis/Stadt',
+        xaxis_title='Anzahl Gymnasien/Gesamtschulen',
         yaxis_title='Kreis/Stadt',
         height=1200
     )
@@ -899,7 +937,7 @@ def main():
         with col2:
             st.metric("📍 Kreise/Städte", df['Kreis'].nunique())
         with col3:
-            st.metric("🎯 Gymnasien", len(df[df['Schulform'] == 'Gymnasien']))
+            st.metric("🎯 Gymnasien/Gesamtschulen", len(get_gymnasium_ebene_df(df)))
         with col4:
             st.metric("📚 Schulformen", df['Schulform'].nunique())
         
@@ -918,7 +956,7 @@ def main():
         
         with col1:
             st.markdown("""
-            <div class="info-box">
+            <div class="dashboard-box">
                 <h3>📈 Dashboard-Modus</h3>
                 <p>Erkunde alle 17 interaktiven Visualisierungen organisiert nach Kategorien:</p>
                 <ul>
@@ -931,7 +969,7 @@ def main():
         
         with col2:
             st.markdown("""
-            <div class="info-box">
+            <div class="story-box">
                 <h3>📖 Story-Modus</h3>
                 <p>Erlebe die Daten in einer narrativen Präsentation:</p>
                 <ul>
@@ -1009,6 +1047,7 @@ def main():
     
     #  DASHBOARD MODE 
     elif app_mode == "📈 Dashboard":
+        st.markdown('<div class="mode-badge dashboard">📈 Dashboard-Modus</div>', unsafe_allow_html=True)
         st.title("📈 Interaktives Dashboard")
         
         # Debug info
@@ -1042,20 +1081,16 @@ def main():
             if "100" in viz:
                 st.subheader("VIZ 100: Korrelations-Heatmap")
                 try:
-                    fig = create_correlation_heatmap(df)
-                    if fig:
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.error("❌ Chart konnte nicht erstellt werden")
-                except Exception as e:
-                    st.error(f"❌ Fehler bei Chart-Erstellung: {str(e)}")
+                    st.plotly_chart(create_correlation_heatmap(df), use_container_width=True)
+                except Exception:
+                    st.error("❌ Chart konnte nicht erstellt werden")
                     import traceback
                     st.code(traceback.format_exc())
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
-                    - **Negative Korrelation** zwischen Einkommen und Sozialindex (höheres Einkommen = niedrigerer SI)
-                    - Betreuungsrelation korreliert positiv mit Sozialindex (schlechtere Betreuung in benachteiligten Gebieten)
-                    - Bildungsausgaben zeigen schwächere, aber erkennbare Zusammenhänge
+                    - Negative Korrelation: Einkommen ↔ Sozialindex
+                    - Schlechtere Betreuung korreliert mit höherem Sozialindex
+                    - Deutliche Strukturmuster zwischen sozioökonomischen Faktoren
                     """)
             
             elif "101" in viz:
@@ -1114,39 +1149,39 @@ def main():
         elif category == "Gymnasium-Ebene (VIZ 105-107)":
             viz = st.sidebar.radio(
                 "Visualisierung:",
-                ["VIZ 105: Top & Bottom Gymnasien-Kreise",
-                 "VIZ 106: Gymnasium Sozialindex vs. Betreuung",
-                 "VIZ 107: Gymnasien pro Kreis"]
+                ["VIZ 105: Top & Bottom Gymnasien/Gesamtschulen-Kreise",
+                 "VIZ 106: Gymnasien/Gesamtschulen Sozialindex vs. Betreuung",
+                 "VIZ 107: Gymnasien/Gesamtschulen pro Kreis"]
             )
             
             if "105" in viz:
-                st.subheader("VIZ 105: Top & Bottom Gymnasien-Kreise")
+                st.subheader("VIZ 105: Top & Bottom Gymnasien/Gesamtschulen-Kreise")
                 st.plotly_chart(create_gymnasium_top_bottom(df), use_container_width=True)
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
-                    - **Köln** führt mit über 40 Gymnasien
-                    - Ländliche Kreise haben oft nur 1-3 Gymnasien
-                    - Zugang zu Gymnasialbildung stark regional unterschiedlich
+                    - Kreise mit vielen Gymnasien/Gesamtschulen haben meist **bessere Sozialindizes**
+                    - Ländliche Regionen oft weniger Schulen dieser Formen
+                    - Große Städte dominieren die Top 10
                     """)
             
             elif "106" in viz:
-                st.subheader("VIZ 106: Gymnasium Sozialindex vs. Betreuung")
+                st.subheader("VIZ 106: Gymnasien/Gesamtschulen Sozialindex vs. Betreuung")
                 st.plotly_chart(create_gymnasium_sozialindex(df), use_container_width=True)
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
-                    - Gymnasien in wohlhabenden Kreisen haben **bessere Betreuung**
-                    - Auch innerhalb Gymnasien zeigt sich soziale Segregation
-                    - Verstärkung von Bildungsungleichheit
+                    - **Niedriger Sozialindex** = bessere Bedingungen
+                    - Kreise mit niedrigem SI haben oft bessere Betreuung
+                    - Struktur: Wohlhabende Regionen mit günstigerem Schüler/Lehrer-Verhältnis
                     """)
             
             elif "107" in viz:
-                st.subheader("VIZ 107: Gymnasien pro Kreis")
+                st.subheader("VIZ 107: Gymnasien/Gesamtschulen pro Kreis")
                 st.plotly_chart(create_gymnasium_schulanzahl(df), use_container_width=True)
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
-                    - Städte dominieren Gymnasium-Angebot
-                    - Ländliche Regionen deutlich unterversorgt
-                    - Mobilität/Pendeln notwendig für Gymnasialzugang
+                    - Starke Konzentration in Großstädten
+                    - Ländliche Kreise mit 0-2 Schulen dieser Formen
+                    - Bildungszugang regional sehr unterschiedlich
                     """)
         
         # Gymnasium Extended
@@ -1305,8 +1340,9 @@ def main():
     
     #  STORY MODE 
     else:  # Story Mode
+        st.markdown('<div class="mode-badge story">📖 Story-Modus</div>', unsafe_allow_html=True)
         st.title("📖 NRW Bildungsanalyse Story")
-        
+
         st.markdown("""
         ## 🎓 Bildung und soziale Ungleichheit in Nordrhein-Westfalen
         
