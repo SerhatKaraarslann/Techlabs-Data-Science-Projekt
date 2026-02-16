@@ -273,8 +273,7 @@ def load_default_nrw_geojson():
         return None
 
 @st.cache_data
-@st.cache_data
-def load_data():
+def load_data(data_version: float):
     """Load merged school data with caching."""
     try:
         data_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'merged_schuldaten_extended.csv')
@@ -879,8 +878,10 @@ def main():
         ["🏠 Übersicht", "📈 Dashboard", "📖 Story"]
     )
     
-    # Load data
-    df = load_data()
+    # Load data (cache invalidates on CSV change)
+    data_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'merged_schuldaten_extended.csv')
+    data_version = os.path.getmtime(data_path) if os.path.exists(data_path) else 0
+    df = load_data(data_version)
     
     if df is None:
         st.error("❌ Daten konnten nicht geladen werden!")
