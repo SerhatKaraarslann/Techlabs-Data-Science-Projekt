@@ -145,6 +145,10 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.25rem;
         margin: 1rem 0;
+        color: #0f172a;
+    }
+    .dashboard-box h3, .dashboard-box p, .dashboard-box li {
+        color: #0f172a;
     }
     .story-box {
         background: #f3e8ff;
@@ -152,6 +156,10 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.25rem;
         margin: 1rem 0;
+        color: #1f1147;
+    }
+    .story-box h3, .story-box p, .story-box li {
+        color: #1f1147;
     }
     .mode-badge {
         display: inline-block;
@@ -928,7 +936,7 @@ def main():
     #  OVERVIEW MODE 
     if app_mode == "🏠 Übersicht":
         st.markdown('<h1 class="main-header">🎓 NRW Bildungsanalyse</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="sub-header">Interaktives Dashboard mit 17 Plotly-Visualisierungen</p>', unsafe_allow_html=True)
+        st.markdown('<p class="sub-header">Interaktives Dashboard mit 18 Plotly-Visualisierungen</p>', unsafe_allow_html=True)
         
         # Metrics
         col1, col2, col3, col4 = st.columns(4)
@@ -958,7 +966,7 @@ def main():
             st.markdown("""
             <div class="dashboard-box">
                 <h3>📈 Dashboard-Modus</h3>
-                <p>Erkunde alle 17 interaktiven Visualisierungen organisiert nach Kategorien:</p>
+                <p>Erkunde alle 18 interaktiven Visualisierungen organisiert nach Kategorien:</p>
                 <ul>
                     <li><b>Stadt-Ebene:</b> Korrelationen, Rankings, Vergleiche (VIZ 100-104)</li>
                     <li><b>Gymnasium-Ebene:</b> Spezialisierte Analysen (VIZ 105-107, 200-203)</li>
