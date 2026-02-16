@@ -1254,7 +1254,7 @@ def main():
 
             elif "203" in viz:
                 st.subheader("VIZ 203: Gymnasium-Dichte vs. Sozialindex")
-                st.plotly_chart(create_gymnasium_dichte(df), use_container_width=True)
+                st.plotly_chart(create_kreis_gymnasium_dichte(df), use_container_width=True)
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
                     - **Bubble-Größe:** Einkommen pro Einwohner
