@@ -30,6 +30,7 @@ import warnings
 import subprocess
 import sys
 import re
+import json
 warnings.filterwarnings('ignore')
 
 #  GENERATE DATA ON STARTUP IF MISSING 
@@ -148,9 +149,128 @@ def normalize_name(name):
         return ''
     txt = unicodedata.normalize('NFKD', str(name))
     txt = ''.join(ch for ch in txt if not unicodedata.combining(ch))
-    txt = txt.replace('kreisfreie stadt', '').replace('stadt', '').replace('-kreis', '').replace('kreis', '')
+    txt = txt.lower()
+    txt = (txt
+           .replace('kreisfreie stadt', '')
+           .replace('staedteregion', '')
+           .replace('städteregion', '')
+           .replace('staedte', '')
+           .replace('städte', '')
+           .replace('stadte', '')
+           .replace('stadt', '')
+           .replace('-kreis', '')
+           .replace('kreis', '')
+           .replace('cologne', 'koeln')
+           .replace('cleves', 'kleve')
+           .replace('duren', 'dueren')
+           .replace('gutersloh', 'guetersloh')
+           .replace('hoxter', 'hoexter')
+           .replace('luebbecke', 'lubbecke')
+           .replace('bergischen', 'bergischer')
+           .replace('maerkischen', 'markischer')
+           .replace('a d ruhr', '')
+           .replace('a.d.ruhr', '')
+           .replace('adruhr', '')
+           .replace('an der ruhr', '')
+    )
+    txt = txt.replace('ae', 'a').replace('oe', 'o').replace('ue', 'u')
     txt = ''.join(ch for ch in txt if ch.isalnum() or ch.isspace() or ch == '-')
     return ' '.join(txt.lower().split())
+
+def top_bottom_kreise_by(df, value_col, n=3):
+    """Return top and bottom Kreise by mean of value_col."""
+    kreis_series = df.groupby('Kreis')[value_col].mean().dropna().sort_values()
+    bottom = kreis_series.head(n).index.tolist()
+    top = kreis_series.tail(n).index.tolist()
+    return top, bottom
+
+def get_data_vintage():
+    """Return data vintage information used in the project."""
+    return {
+        "Schulliste": "Schuljahr 2025/26",
+        "Einkommen/Einwohner/Bildungsausgaben": "Jahr 2022",
+        "Betreuungsrelation": "Schuljahr 2022/23"
+    }
+
+def create_kreis_choropleth(df, geojson_data, geojson_name_field, metric_col):
+    """Create a choropleth map for NRW Kreise based on selected metric."""
+    kreis_agg = df.groupby('Kreis').agg(
+        Schulen=('Schulnummer', 'count'),
+        Sozialindex=('Sozialindex', 'mean'),
+        Einkommen=('Einkommen_Pro_Einwohner_Euro', 'mean'),
+        Einwohner=('Einwohnerzahl', 'mean'),
+        Bildungsausgaben=('Bildungsausgaben_Euro', 'mean'),
+        Betreuung=('Schueler_Pro_Lehrkraft', 'mean')
+    ).reset_index()
+
+    kreis_agg['Kreis_Key'] = kreis_agg['Kreis'].apply(normalize_name)
+
+    # Add normalized key to geojson features
+    for feature in geojson_data.get('features', []):
+        props = feature.get('properties', {})
+        name_val = props.get(geojson_name_field)
+        props['_kreis_key'] = normalize_name(name_val)
+        feature['properties'] = props
+
+    metric_map = {
+        'Anzahl Schulen': 'Schulen',
+        'Ø Sozialindex': 'Sozialindex',
+        'Ø Einkommen (€/Einw.)': 'Einkommen',
+        'Ø Einwohnerzahl': 'Einwohner',
+        'Ø Bildungsausgaben (€)': 'Bildungsausgaben',
+        'Ø Schüler/Lehrkraft': 'Betreuung'
+    }
+
+    metric_key = metric_map[metric_col]
+
+    fig = px.choropleth_mapbox(
+        kreis_agg,
+        geojson=geojson_data,
+        locations='Kreis_Key',
+        featureidkey='properties._kreis_key',
+        color=metric_key,
+        hover_name='Kreis',
+        hover_data={
+            'Schulen': True,
+            'Sozialindex': ':.2f',
+            'Einkommen': ':.0f',
+            'Einwohner': ':.0f',
+            'Bildungsausgaben': ':.0f',
+            'Betreuung': ':.2f',
+            'Kreis_Key': False
+        },
+        color_continuous_scale='RdYlGn_r' if metric_key in ['Sozialindex', 'Betreuung'] else 'YlGnBu',
+        mapbox_style='open-street-map',
+        zoom=6.2,
+        center={'lat': 51.4332, 'lon': 7.6616},
+        opacity=0.8
+    )
+
+    fig.update_layout(
+        margin={"r": 0, "t": 40, "l": 0, "b": 0},
+        height=700,
+        title=f"NRW Kreise: {metric_col}"
+    )
+    return fig
+
+def load_default_nrw_geojson():
+    """Load and filter default Germany Kreise GeoJSON to NRW if available."""
+    default_path = os.path.join(os.path.dirname(__file__), 'data', 'input', 'deutschland_kreise.geojson')
+    if not os.path.exists(default_path):
+        return None
+    try:
+        with open(default_path, 'r', encoding='utf-8') as f:
+            geojson_data = json.load(f)
+        features = geojson_data.get('features', [])
+        nrw_features = [
+            feat for feat in features
+            if (feat.get('properties') or {}).get('NAME_1') == 'Nordrhein-Westfalen'
+        ]
+        if nrw_features:
+            geojson_data['features'] = nrw_features
+        return geojson_data
+    except Exception:
+        return None
 
 @st.cache_data
 @st.cache_data
@@ -783,6 +903,14 @@ def main():
             st.metric("📚 Schulformen", df['Schulform'].nunique())
         
         st.markdown("---")
+
+        vintage = get_data_vintage()
+        st.info(
+            "📅 Datenstand: "
+            f"{vintage['Schulliste']}, "
+            f"{vintage['Einkommen/Einwohner/Bildungsausgaben']}, "
+            f"{vintage['Betreuungsrelation']}"
+        )
         
         # Info boxes
         col1, col2 = st.columns(2)
@@ -895,7 +1023,8 @@ def main():
             ["Stadt-Ebene (VIZ 100-104)", 
              "Gymnasium-Ebene (VIZ 105-107)",
              "Gymnasium Extended (VIZ 200-203)",
-             "Ergänzungen (VIZ 01-05)"]
+               "Ergänzungen (VIZ 01-05)",
+               "Karten (VIZ 300)"]
         )
         
         # Stadt-Ebene
@@ -931,11 +1060,20 @@ def main():
             elif "101" in viz:
                 st.subheader("VIZ 101: Einkommen vs. Sozialindex")
                 st.plotly_chart(create_einkommen_sozialindex(df), use_container_width=True)
+                top_income, bottom_income = top_bottom_kreise_by(df, 'Einkommen_Pro_Einwohner_Euro', n=3)
+                top_si, bottom_si = top_bottom_kreise_by(df, 'Sozialindex', n=3)
+                top_income_str = ", ".join(top_income) if top_income else "—"
+                bottom_income_str = ", ".join(bottom_income) if bottom_income else "—"
+                top_si_str = ", ".join(top_si) if top_si else "—"
+                bottom_si_str = ", ".join(bottom_si) if bottom_si else "—"
                 with st.expander("ℹ️ Interpretation"):
-                    st.write("""
+                    st.write(f"""
                     - Wohlhabendere Kreise haben tendenziell **bessere Sozialindizes**
                     - Unterschiede von bis zu **5 Punkten** zwischen reichsten und ärmsten Regionen
-                    - Münster, Bonn, Düsseldorf führen bei Einkommen und Sozialindex
+                    - **Höchste Einkommen:** {top_income_str}
+                    - **Niedrigste Einkommen:** {bottom_income_str}
+                    - **Niedrigster Sozialindex (beste Bedingungen):** {bottom_si_str}
+                    - **Höchster Sozialindex (schlechteste Bedingungen):** {top_si_str}
                     """)
             
             elif "102" in viz:
@@ -951,10 +1089,13 @@ def main():
             elif "103" in viz:
                 st.subheader("VIZ 103: Top & Bottom 10 Städte")
                 st.plotly_chart(create_top_bottom_cities(df), use_container_width=True)
+                top_si, bottom_si = top_bottom_kreise_by(df, 'Sozialindex', n=3)
+                top_si_str = ", ".join(top_si) if top_si else "—"
+                bottom_si_str = ", ".join(bottom_si) if bottom_si else "—"
                 with st.expander("ℹ️ Interpretation"):
-                    st.write("""
-                    - **Top-Städte:** Münster, Bonn, Coesfeld führen mit SI ~2.5-3.0
-                    - **Bottom-Städte:** Gelsenkirchen, Duisburg, Herne mit SI ~5.5-6.5
+                    st.write(f"""
+                    - **Top-Städte (niedrigster Sozialindex):** {bottom_si_str}
+                    - **Bottom-Städte (höchster Sozialindex):** {top_si_str}
                     - Deutliche regionale Disparitäten sichtbar
                     """)
             
@@ -1029,7 +1170,7 @@ def main():
                     - **Rote Bereiche:** Schwierigere Bedingungen in benachteiligten Regionen
                     - Gesamtschulen zeigen systematisch höhere Sozialindizes
                     """)
-            
+
             elif "201" in viz:
                 st.subheader("VIZ 201: Top 20 Gymnasien mit besten Bedingungen")
                 st.plotly_chart(create_gymnasium_top20(df), use_container_width=True)
@@ -1037,10 +1178,10 @@ def main():
                     st.write("""
                     - **Niedrigster Sozialindex** = beste sozioökonomische Ausgangsbedingungen
                     - Farbskala zeigt **Betreuungsrelation** (dunkel = besser)
-                    - Top-Schulen konzentrieren sich in Münster, Bonn, Düsseldorf-Umland
-                    - Elite-Gymnasien haben oft SI < 2.0
+                    - Top-Schulen konzentrieren sich stärker in wohlhabenderen Regionen
+                    - Elite-Gymnasien haben oft sehr niedrige Sozialindizes
                     """)
-            
+
             elif "202" in viz:
                 st.subheader("VIZ 202: Gymnasium vs. Gesamtschule - Direkter Vergleich")
                 st.plotly_chart(create_gym_vs_gesamtschule(df), use_container_width=True)
@@ -1051,8 +1192,44 @@ def main():
                     - Systematische **Segregation** zwischen Schulformen
                     - Gesamtschulen übernehmen sozial schwierigere Schülerschaft
                     """)
-            
+
             elif "203" in viz:
+                st.subheader("VIZ 203: Gymnasium-Dichte vs. Sozialindex")
+                st.plotly_chart(create_gymnasium_dichte(df), use_container_width=True)
+                with st.expander("ℹ️ Interpretation"):
+                    st.write("""
+                    - **Bubble-Größe:** Einkommen pro Einwohner
+                    - **Farbe:** Betreuungsrelation (dunkel = besser)
+                    - Gymnasium-Dichte korreliert teilweise mit Sozialindex
+                    - Regionale Muster sichtbar
+                    """)
+
+        # Karten
+        elif category == "Karten (VIZ 300)":
+            st.subheader("VIZ 300: NRW Kartenansicht (dynamisch)")
+            geojson_data = load_default_nrw_geojson()
+
+            if geojson_data is None:
+                st.error("❌ NRW-GeoJSON nicht gefunden. Bitte Datei in data/input/deutschland_kreise.geojson ablegen.")
+            else:
+                metric_col = st.selectbox(
+                    "Kennzahl",
+                    [
+                        "Anzahl Schulen",
+                        "Ø Sozialindex",
+                        "Ø Einkommen (€/Einw.)",
+                        "Ø Einwohnerzahl",
+                        "Ø Bildungsausgaben (€)",
+                        "Ø Schüler/Lehrkraft"
+                    ]
+                )
+
+                try:
+                    fig = create_kreis_choropleth(df, geojson_data, 'NAME_3', metric_col)
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.error(f"❌ Fehler beim Rendern der Karte: {str(e)}")
+            
                 st.subheader("VIZ 203: Gymnasium-Dichte vs. Sozialindex")
                 st.plotly_chart(create_kreis_gymnasium_dichte(df), use_container_width=True)
                 with st.expander("ℹ️ Interpretation"):
@@ -1140,6 +1317,14 @@ def main():
         
         # Chapter 1
         st.header("1️⃣ Die Datenbasis")
+
+        vintage = get_data_vintage()
+        st.info(
+            "📅 Datenstand: "
+            f"{vintage['Schulliste']}, "
+            f"{vintage['Einkommen/Einwohner/Bildungsausgaben']}, "
+            f"{vintage['Betreuungsrelation']}"
+        )
         
         col1, col2 = st.columns([2, 1])
         
@@ -1163,13 +1348,24 @@ def main():
         st.header("2️⃣ Regionale Disparitäten")
         
         st.plotly_chart(create_einkommen_sozialindex(df), use_container_width=True)
-        
-        st.markdown("""
+
+        top_income, bottom_income = top_bottom_kreise_by(df, 'Einkommen_Pro_Einwohner_Euro', n=3)
+        top_si, bottom_si = top_bottom_kreise_by(df, 'Sozialindex', n=3)
+        top_income_str = ", ".join(top_income) if top_income else "—"
+        bottom_income_str = ", ".join(bottom_income) if bottom_income else "—"
+        top_si_str = ", ".join(top_si) if top_si else "—"
+        bottom_si_str = ", ".join(bottom_si) if bottom_si else "—"
+
+        st.markdown(f"""
         ### 💰 Der Einkommenseffekt
         
-        - **Münster, Bonn, Düsseldorf:** Hohe Einkommen (>30.000 €/Einwohner), niedrige Sozialindizes (~2.5)
-        - **Gelsenkirchen, Duisburg, Herne:** Niedrige Einkommen (<25.000 €), hohe Sozialindizes (~6.0)
-        - **Unterschied:** Bis zu **5 Sozialindex-Punkte** zwischen reichsten und ärmsten Regionen
+        - Kreise mit höheren Einkommen zeigen im Mittel niedrigere Sozialindizes
+        - Kreise mit niedrigeren Einkommen zeigen im Mittel höhere Sozialindizes
+        - **Unterschied:** Es gibt deutliche Sozialindex-Unterschiede zwischen Regionen
+        - **Höchste Einkommen:** {top_income_str}
+        - **Niedrigste Einkommen:** {bottom_income_str}
+        - **Niedrigster Sozialindex (beste Bedingungen):** {bottom_si_str}
+        - **Höchster Sozialindex (schlechteste Bedingungen):** {top_si_str}
         """)
         
         st.markdown("---")

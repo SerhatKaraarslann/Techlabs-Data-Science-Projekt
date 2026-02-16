@@ -32,6 +32,15 @@ streamlit run streamlit_app.py
 # 5. Browser öffnet automatisch → http://localhost:8501
 ```
 
+**Linux/macOS (Kurzfassung):**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
 ---
 
 ## 📊 **Dashboard Features**
@@ -44,7 +53,7 @@ streamlit run streamlit_app.py
 | **📊 Dashboard** | 17 Visualisierungen in 4 Kategorien mit Filtern |
 | **📖 Story** | Narrative Präsentation mit Erkenntnissen |
 
-### **17 Interaktive Visualisierungen (Plotly):**
+### **18 Interaktive Visualisierungen (Plotly):**
 
 #### **Stadt-Ebene (VIZ 100-104)** - Korrelationen & Vergleiche
 - **VIZ 100:** Korrelations-Heatmap (alle Indikatoren)
@@ -71,6 +80,9 @@ streamlit run streamlit_app.py
 - **VIZ 04:** Spreizungs-Ranking
 - **VIZ 05:** Schulformen Donut-Chart
 
+#### **Karten (VIZ 300)** - NRW Choropleth
+- **VIZ 300:** Dynamische NRW-Karte (Kreise) mit Kennzahl-Auswahl
+
 **Alle Charts:** Zoom, Pan, Hover-Info, Download als PNG
 
 ---
@@ -93,9 +105,9 @@ streamlit run streamlit_app.py
 | **Gemeinde** | Ortsname | Schule | IT.NRW |
 | **Kreis** | 53 Kreise/Städte | Schule | IT.NRW |
 | **Sozialindex_Stufe** | 1-9 (1=best, 9=worst) | **Schule** | IT.NRW (soziale Benachteiligung) |
-| **Sozialindex** | 0.5-2.5 (numeric) | **Schule** | IT.NRW |
-| **Einkommen_Pro_Einwohner_Euro** | 23.341€ - 29.108€ | **Kreis-Ebene** | VGR der Länder |
-| **Einwohnerzahl** | Pro Kreis | **Kreis-Ebene** | VGR der Länder |
+| **Sozialindex** | 1-9 (numeric) | **Schule** | IT.NRW |
+| **Einkommen_Pro_Einwohner_Euro** | Pro Kreis | **Kreis-Ebene** | VGR der Länder |
+| **Einwohnerzahl** | Pro Kreis (absolute Zahl) | **Kreis-Ebene** | VGR der Länder |
 | **Bildungsausgaben_Euro** | Pro Kopf | **Kreis-Ebene** | VGR der Länder |
 | **Schueler_Pro_Lehrkraft** | 10-15 Ratio | Schule/Schulform | IT.NRW |
 
@@ -105,6 +117,7 @@ streamlit run streamlit_app.py
 - Aggregiert auf **KREIS-Ebene** (keine Duplikate)
 - Alle Schulen im gleichen Kreis haben den gleichen Einkommen/Bevölkerungswert
 - **Warum?** Einkommen wird nicht auf Schulebene, sondern auf Kreisebene gemessen
+- **Einwohnerzahl-Hinweis:** Werte stammen aus VGR und werden als absolute Zahl gespeichert (nicht in Tsd.)
 
 ✅ **Sozialindex:** 
 - **Individuell pro Schule** (Werte 1-9)
@@ -114,6 +127,12 @@ streamlit run streamlit_app.py
 - IT.NRW (Schulen, Schüler, Lehrer)
 - VGR der Länder (Einkommen, Bevölkerung, Bildungsausgaben)
 - Open Data NRW
+- deutschlandGeoJSON (Kreis-Geometrien, public domain)
+
+### **Datenstand**
+- **Schulliste:** Schuljahr 2025/26
+- **Einkommen/Einwohner/Bildungsausgaben:** Jahr 2022
+- **Betreuungsrelation:** Schuljahr 2022/23
 
 ---
 
@@ -167,8 +186,9 @@ Techlabs-Data-Science-Projekt/
     ├── input/                          # 📥 Rohdaten (nicht versioniert)
     │   ├── Schulen, Schülerinnen... [Schulstatistik]
     │   ├── schulliste_sj_25_26_open_data.csv
-    │   ├── vgrdl_r2b3_bs2023.xlsx [Einkommen 2023]
-    │   └── vgrdl_r2b2_bs2024.xlsx [Einkommen 2024]
+    │   ├── vgrdl_r2b3_bs2023.xlsx [VGR 2022]
+    │   ├── vgrdl_r2b2_bs2024.xlsx [Bildung 2022]
+    │   └── deutschland_kreise.geojson [Kreis-Geometrien]
     │
     ├── output/                         # 📤 Generierte Dateien
     │   ├── merged_schuldaten_extended.csv    # Hauptdatensatz
@@ -273,5 +293,5 @@ Andreas Ahrens, Franka Eberhardt, Chantal Reerink, Serhat Karaarslan
 
 ---
 
-**Version:** 1.0.0 | **Letztes Update:** 2025 | **Status:** ✅ Production Ready
+**Version:** 1.1.0 | **Letztes Update:** 2026-02-16 | **Status:** ✅ Production Ready
 

@@ -80,10 +80,14 @@ def name_normalisieren(name):
     """
     if not isinstance(name, str): return ""
     name = name.lower()
-    name = re.sub(r'(kreis|stadt|stâ€ždteregion|stã¤dteregion|regierungsbezirk|krfr\.|landkreis)', '', name)
+    # Entferne komplexe Zusätze zuerst
+    name = name.replace('kreisfreie stadt', '').replace('kreisfreie', '').replace('freie', '')
+    name = name.replace('staedteregion', '').replace('städteregion', '')
+    # Entferne generische Zusätze
+    name = re.sub(r'(kreis|stadt|regierungsbezirk|krfr\.|landkreis)', '', name)
     name = re.sub(r',', '', name)
     name = name.replace('â€ž', 'ä').replace('ã¤', 'ä').replace('ã¼', 'ü').replace('ã¶', 'ö')
-    name = name.replace('ü', 'u').replace('ä', 'a').replace('ö', 'o').replace('ß', 'ss')
+    name = name.replace('ü', 'ue').replace('ä', 'ae').replace('ö', 'oe').replace('ß', 'ss')
     return re.sub(r'\W+', '', name).strip()
 
 def schulform_bestimmen(name):
@@ -165,7 +169,8 @@ print("\n Lade Einkommensdaten...")
 einkommen = pd.read_excel(os.path.join(input_dir, 'vgrdl_r2b3_bs2023.xlsx'), sheet_name='2.4', skiprows=4)
 # Filter auf KREIS-Ebene (nicht Gemeinden), nutze nur aktuelles Jahr (2022)
 einkommen_clean = einkommen[einkommen['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy()
-einkommen_clean = einkommen_clean[~einkommen_clean['Gebietseinheit'].str.contains('Stadt|Gemeinde|Verbandsgem', case=False, na=False)]
+# Nur Unter-Kreisebene filtern (Gemeinde/Verbandsgemeinde) - kreisfreie Städte behalten
+einkommen_clean = einkommen_clean[~einkommen_clean['Gebietseinheit'].str.contains('Gemeinde|Verbandsgem', case=False, na=False)]
 einkommen_clean.columns = ['Gebietseinheit', 'Einkommen_2022']
 einkommen_clean['Join_Key'] = einkommen_clean['Gebietseinheit'].apply(name_normalisieren)
 # Duplikate entfernen (nur neuester Datensatz pro Kreis)
@@ -183,7 +188,8 @@ print("\n Lade Einwohnerzahlen...")
 einwohner = pd.read_excel(os.path.join(input_dir, 'vgrdl_r2b3_bs2023.xlsx'), sheet_name='3', skiprows=4)
 # Filter auf KREIS-Ebene (nicht Gemeinden), nutze nur aktuelles Jahr (2022)
 einwohner_clean = einwohner[einwohner['NUTS 3'].notna()][['Gebietseinheit', 2022]].copy()
-einwohner_clean = einwohner_clean[~einwohner_clean['Gebietseinheit'].str.contains('Stadt|Gemeinde|Verbandsgem', case=False, na=False)]
+# Nur Unter-Kreisebene filtern (Gemeinde/Verbandsgemeinde) - kreisfreie Städte behalten
+einwohner_clean = einwohner_clean[~einwohner_clean['Gebietseinheit'].str.contains('Gemeinde|Verbandsgem', case=False, na=False)]
 einwohner_clean.columns = ['Gebietseinheit', 'Einwohner_2022']
 einwohner_clean['Join_Key'] = einwohner_clean['Gebietseinheit'].apply(name_normalisieren)
 # Duplikate entfernen (nur neuester Datensatz pro Kreis)
@@ -191,6 +197,7 @@ einwohner_clean = einwohner_clean.drop_duplicates(subset=['Join_Key'], keep='fir
 einwohner_map = einwohner_clean.set_index('Join_Key')['Einwohner_2022'].to_dict()
 
 schulen['Einwohnerzahl'] = schulen['Kreis_Key'].map(einwohner_map)
+schulen['Einwohnerzahl'] = pd.to_numeric(schulen['Einwohnerzahl'], errors='coerce') * 1000
 
 print(f"Einwohnerzahlen verknüpft ({schulen['Einwohnerzahl'].notna().sum()} Schulen)")
 
