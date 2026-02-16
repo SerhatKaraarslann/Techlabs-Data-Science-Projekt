@@ -363,7 +363,7 @@ def load_data(data_version: float):
             df[col] = df[col].str.replace('ß', 'ss', regex=False)
         
         # Columns should already be numeric with decimal=',' but ensure it
-        numeric_cols = ['Sozialindex', 'Schueler_Pro_Lehrkraft', 'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro']
+        numeric_cols = ['Sozialindex', 'Schueler_Pro_Lehrkraft', 'Einkommen_Pro_Einwohner_Euro', 'Bildungsausgaben_Euro', 'Einwohnerzahl']
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -603,6 +603,9 @@ def create_gymnasium_schulanzahl(df):
     """VIZ 107: Gymnasien/Gesamtschulen pro Kreis"""
     gym_df = get_gymnasium_ebene_df(df)
     gym_count = gym_df.groupby('Kreis').size().reset_index(name='Anzahl_Gymnasien')
+    all_kreise = pd.Series(df['Kreis'].dropna().unique(), name='Kreis')
+    gym_count = all_kreise.to_frame().merge(gym_count, on='Kreis', how='left')
+    gym_count['Anzahl_Gymnasien'] = gym_count['Anzahl_Gymnasien'].fillna(0).astype(int)
     gym_count_sorted = gym_count.sort_values('Anzahl_Gymnasien', ascending=True)
     
     fig = go.Figure(go.Bar(
@@ -875,34 +878,39 @@ def create_gym_vs_gesamtschule(df):
 def create_kreis_gymnasium_dichte(df):
     """VIZ 203: Kreis-Analyse Gymnasium-Dichte"""
     gymnasien = df[df['Schulform'].isin(['Gymnasien', 'Gesamtschulen'])].copy()
-    
     kreis_gym = gymnasien.groupby('Kreis').agg({
         'Schulname': 'count',
         'Sozialindex': 'mean',
         'Schueler_Pro_Lehrkraft': 'mean',
         'Einkommen_Pro_Einwohner_Euro': 'mean'
     }).reset_index()
-    
+
     kreis_gym.columns = ['Kreis', 'Anzahl_Gymnasien', 'Ø_Sozialindex', 'Ø_Betreuung', 'Ø_Einkommen']
+
+    kreis_einwohner = df.groupby('Kreis')['Einwohnerzahl'].mean().reset_index()
+    kreis_gym = kreis_gym.merge(kreis_einwohner, on='Kreis', how='left')
+    kreis_gym['Gym_Dichte_100k'] = (kreis_gym['Anzahl_Gymnasien'] / kreis_gym['Einwohnerzahl']) * 100000
+    kreis_gym = kreis_gym.replace([np.inf, -np.inf], np.nan).dropna(subset=['Gym_Dichte_100k'])
     
     fig = px.scatter(
         kreis_gym,
-        x='Anzahl_Gymnasien',
+        x='Gym_Dichte_100k',
         y='Ø_Sozialindex',
         size='Ø_Einkommen',
         color='Ø_Betreuung',
         hover_name='Kreis',
         hover_data={
             'Anzahl_Gymnasien': True,
+            'Gym_Dichte_100k': ':.2f',
             'Ø_Sozialindex': ':.2f',
             'Ø_Betreuung': ':.2f',
             'Ø_Einkommen': ':,.0f'
         },
         color_continuous_scale='RdYlGn_r',
         size_max=30,
-        title='Gymnasium-Dichte vs. Sozialindex nach Kreis<br><sub>Größe = Einkommen | Farbe = Betreuungsrelation</sub>',
+        title='Gymnasium-Dichte vs. Sozialindex nach Kreis<br><sub>Gymnasien pro 100.000 Ew. | Größe = Einkommen | Farbe = Betreuungsrelation</sub>',
         labels={
-            'Anzahl_Gymnasien': 'Anzahl Gymnasien/Gesamtschulen',
+            'Gym_Dichte_100k': 'Gymnasien pro 100.000 Ew.',
             'Ø_Sozialindex': 'Durchschn. Sozialindex',
             'Ø_Betreuung': 'Ø Schüler/Lehrer',
             'Ø_Einkommen': 'Ø Einkommen'
@@ -1185,12 +1193,19 @@ def main():
             elif "107" in viz:
                 st.subheader("VIZ 107: Gymnasien/Gesamtschulen pro Kreis")
                 st.plotly_chart(create_gymnasium_schulanzahl(df), use_container_width=True)
+                gym_df = get_gymnasium_ebene_df(df)
+                kreise_all = df['Kreis'].dropna().unique()
+                gym_count = gym_df.groupby('Kreis').size()
+                gym_count = pd.Series(0, index=kreise_all).add(gym_count, fill_value=0).astype(int)
+                low_kreise = int((gym_count <= 2).sum())
+                total_kreise = int(len(kreise_all))
+                low_share = (low_kreise / total_kreise * 100) if total_kreise else 0
                 with st.expander("ℹ️ Interpretation"):
                     st.write("""
                     - Starke Konzentration in Großstädten
-                    - Ländliche Kreise mit 0-2 Schulen dieser Formen
+                    - Kreise mit 0–2 Schulen dieser Formen: {low_kreise} von {total_kreise} ({low_share:.1f}%)
                     - Bildungszugang regional sehr unterschiedlich
-                    """)
+                    """.format(low_kreise=low_kreise, total_kreise=total_kreise, low_share=low_share))
         
         # Gymnasium Extended
         elif category == "Gymnasium Extended (VIZ 200-203)":

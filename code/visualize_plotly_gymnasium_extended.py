@@ -220,25 +220,31 @@ kreis_gym = gymnasien.groupby('Kreis').agg({
 
 kreis_gym.columns = ['Kreis', 'Anzahl_Gymnasien', 'Ø_Sozialindex', 'Ø_Betreuung', 'Ø_Einkommen']
 
+kreis_einwohner = df.groupby('Kreis')['Einwohnerzahl'].mean().reset_index()
+kreis_gym = kreis_gym.merge(kreis_einwohner, on='Kreis', how='left')
+kreis_gym['Gym_Dichte_100k'] = (kreis_gym['Anzahl_Gymnasien'] / kreis_gym['Einwohnerzahl']) * 100000
+kreis_gym = kreis_gym.replace([np.inf, -np.inf], np.nan).dropna(subset=['Gym_Dichte_100k'])
+
 # Erstelle Scatterplot: X = Anzahl Gymnasien, Y = Ø Sozialindex, Größe = Ø Einkommen, Farbe = Ø Betreuung
 fig4 = px.scatter(
     kreis_gym,
-    x='Anzahl_Gymnasien',
+    x='Gym_Dichte_100k',
     y='Ø_Sozialindex',
     size='Ø_Einkommen',
     color='Ø_Betreuung',
     hover_name='Kreis',
     hover_data={
         'Anzahl_Gymnasien': True,
+        'Gym_Dichte_100k': ':.2f',
         'Ø_Sozialindex': ':.2f',
         'Ø_Betreuung': ':.2f',
         'Ø_Einkommen': ':,.0f'
     },
     color_continuous_scale='RdYlGn_r',
     size_max=30,
-    title='<b>Gymnasium-Dichte vs. Sozialindex nach Kreis</b><br><sub>Größe = Einkommen | Farbe = Betreuungsrelation</sub>',
+    title='<b>Gymnasium-Dichte vs. Sozialindex nach Kreis</b><br><sub>Gymnasien pro 100.000 Ew. | Größe = Einkommen | Farbe = Betreuungsrelation</sub>',
     labels={
-        'Anzahl_Gymnasien': 'Anzahl Gymnasien/Gesamtschulen',
+        'Gym_Dichte_100k': 'Gymnasien pro 100.000 Ew.',
         'Ø_Sozialindex': 'Durchschn. Sozialindex',
         'Ø_Betreuung': 'Ø Schüler/Lehrer',
         'Ø_Einkommen': 'Ø Einkommen'
