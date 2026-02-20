@@ -270,46 +270,55 @@ print(f"   [OK] Gespeichert: viz_plotly_102_sozialindex_betreuung.html")
 # VIZ 4: Top 10 & Bottom 10 Städte
 print(f"\n [4/11] Erstelle: Top/Bottom 10 Städte...")
 
-# Top 10 Städte mit niedrigstem Sozialindex (besser) und Bottom 10 mit höchstem Sozialindex (schlechter)
-top10 = stadt_agg.nlargest(10, 'Sozialindex_Avg').sort_values('Sozialindex_Avg', ascending=True)
-bottom10 = stadt_agg.nsmallest(10, 'Sozialindex_Avg').sort_values('Sozialindex_Avg', ascending=False)
+# WICHTIG: Sozialindex ist UMGEKEHRT!
+# - Niedrig = GUT (besser)
+# - Hoch = SCHLECHT (schlechter)
+# Daher:
+# - Bottom 10 = nsmallest = BESTE Städte (niedrigster Sozialindex)
+# - Top 10 = nlargest = SCHLECHTESTE Städte (höchster Sozialindex)
+
+bottom10 = stadt_agg.nsmallest(10, 'Sozialindex_Avg').sort_values('Sozialindex_Avg', ascending=True)  # Beste (niedrig)
+top10 = stadt_agg.nlargest(10, 'Sozialindex_Avg').sort_values('Sozialindex_Avg', ascending=False)    # Schlechteste (hoch)
 
 fig4 = make_subplots(
     rows=1, cols=2,
-    subplot_titles=('Top 10 (Best)', 'Bottom 10 (Worst)'),
+    subplot_titles=('Bottom 10 - Beste Städte (Niedrig)', 'Top 10 - Schlechteste Städte (Hoch)'),
     specs=[[{'type': 'bar'}, {'type': 'bar'}]],
     horizontal_spacing=0.12
 )
 
-# Bar-Charts für Top 10 und Bottom 10 Städte mit Hover-Text und Beschriftungen
-fig4.add_trace(go.Bar(
-    y=top10['Stadt'],
-    x=top10['Sozialindex_Avg'],
-    orientation='h',
-    marker=dict(color='#2ca02c', line=dict(color='#1b5e0f', width=1)),
-    text=top10['Sozialindex_Avg'].round(2),
-    textposition='outside',
-    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f}<extra></extra>',
-    showlegend=False
-), row=1, col=1)
+# Bar-Charts für Top 10 und Bottom 10 Städte mit korrekten Farben
+# GRÜN = Gute Städte (niedrig), ROT/ORANGE = Schlechte Städte (hoch)
 
-# Bar-Chart für Bottom 10 Städte mit Hervorhebung in Orange und Hover-Text
+# Bottom 10 (BESTE) - Grün
 fig4.add_trace(go.Bar(
     y=bottom10['Stadt'],
     x=bottom10['Sozialindex_Avg'],
     orientation='h',
-    marker=dict(color='#ff7f0e', line=dict(color='#8b5a00', width=1)),
+    marker=dict(color='#2ca02c', line=dict(color='#1b5e0f', width=1)),
     text=bottom10['Sozialindex_Avg'].round(2),
     textposition='outside',
-    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f}<extra></extra>',
+    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (GUT)<extra></extra>',
+    showlegend=False
+), row=1, col=1)
+
+# Top 10 (SCHLECHTESTE) - Rot
+fig4.add_trace(go.Bar(
+    y=top10['Stadt'],
+    x=top10['Sozialindex_Avg'],
+    orientation='h',
+    marker=dict(color='#d62728', line=dict(color='#8b0000', width=1)),
+    text=top10['Sozialindex_Avg'].round(2),
+    textposition='outside',
+    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (SCHLECHT)<extra></extra>',
     showlegend=False
 ), row=1, col=2)
 
-fig4.update_xaxes(title_text='Sozialindex', row=1, col=1)
-fig4.update_xaxes(title_text='Sozialindex', row=1, col=2)
+fig4.update_xaxes(title_text='Sozialindex (Niedrig = Besser)', row=1, col=1)
+fig4.update_xaxes(title_text='Sozialindex (Hoch = Schlechter)', row=1, col=2)
 
 fig4.update_layout(
-    title='Top 10 und Bottom 10 Städte nach Sozialindex',
+    title='Top/Bottom 10 Städte nach Sozialindex<br><sub>Sozialindex ist umgekehrt: Niedrig = GUT, Hoch = SCHLECHT</sub>',
     width=1400,
     height=600,
     template='plotly_white'
