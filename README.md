@@ -21,7 +21,7 @@ Sofort verfügbar - keine Installation notwendig.
 ### Windows PowerShell
 ```powershell
 git clone <repository-url>
-cd Techlabs-Data-Science-Projekt-1
+cd Techlabs-Data-Science-Projekt
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -31,7 +31,7 @@ streamlit run streamlit_app.py
 ### Linux / macOS
 ```bash
 git clone <repository-url>
-cd Techlabs-Data-Science-Projekt-1
+cd Techlabs-Data-Science-Projekt
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
