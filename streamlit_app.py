@@ -970,7 +970,24 @@ def create_schulen_map(df):
     sort_cols = [c for c in ['Kreis', 'Gemeinde', 'Schulnummer', 'Schulname'] if c in df_clean.columns]
     df_clean = df_clean.sort_values(sort_cols).copy()
 
-    # Gemeinde-Koordinaten aus Cache (vorab geokodiert) laden
+    # Versuche zuerst echte Schuladressen zu laden (von OGC API)
+    school_addresses_cache = os.path.join(os.path.dirname(__file__), 'data', 'output', 'schulen_adressen_ogc_cache.csv')
+    school_coords = {}
+    
+    if os.path.exists(school_addresses_cache):
+        try:
+            addr_df = pd.read_csv(school_addresses_cache)
+            addr_df = addr_df.dropna(subset=['Schulnummer', 'lat', 'lon']).copy()
+            for _, r in addr_df.iterrows():
+                school_coords[int(r['Schulnummer'])] = (float(r['lat']), float(r['lon']))
+            st.info(f"✅ {len(school_coords)} echte Schuladressen vom NRW OGC API geladen")
+        except Exception as e:
+            st.warning(f"⚠️ Schuladressen-Cache konnte nicht geladen werden: {e}")
+            school_coords = {}
+    else:
+        st.info("ℹ️ Schuladressen-Cache nicht gefunden. Verwende Kreis/Gemeinde-Koordinaten.")
+    
+    # Fallback: Gemeinde-Koordinaten aus Cache (vorab geokodiert) laden
     cache_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'gemeinde_coords_cache.csv')
     gemeinde_anchor = {}
     if os.path.exists(cache_path):
@@ -984,16 +1001,22 @@ def create_schulen_map(df):
         except Exception:
             gemeinde_anchor = {}
 
-    # Schulen innerhalb derselben Gemeinde als sehr kleine Spirale verteilen
-    # (nur zur Trennung überlappender Marker)
+    # Schulen innerhalb derselben Gemeinde als sehr kleine Spirale verteilen (nur wenn keine echte Adresse)
     df_clean['_kreis_norm'] = df_clean['Kreis'].map(normalize_text)
     df_clean['_gemeinde_norm'] = df_clean['Gemeinde'].map(normalize_text)
     df_clean['_schul_idx'] = df_clean.groupby(['_kreis_norm', '_gemeinde_norm']).cumcount()
 
     def get_school_coords(row):
+        schulnummer = row.get('Schulnummer', None)
+        
+        # Priorität 1: Echte Schuladresse aus Cache
+        if schulnummer is not None and int(schulnummer) in school_coords:
+            return school_coords[int(schulnummer)]
+        
+        # Priorität 2: Gemeinde-Anker + kleine Spirale
         anchor = gemeinde_anchor.get((row['_kreis_norm'], row['_gemeinde_norm']), get_kreis_center(row['_kreis_norm']))
         idx = int(row['_schul_idx'])
-        # Sehr kleine Spirale um den Gemeinde-Anker (realistischere Lage)
+        # Sehr kleine Spirale um den Gemeinde-Anker
         r = 0.00035 * np.sqrt(idx + 1)
         theta = idx * 2.399963229728653  # golden angle
         lat = anchor[0] + r * np.sin(theta)
@@ -1004,7 +1027,7 @@ def create_schulen_map(df):
     df_clean['lat'] = [c[0] for c in coords]
     df_clean['lon'] = [c[1] for c in coords]
     
-    # Erstelle Scatter Mapbox
+    # Erstelle Scatter Mapbox mit verbesserter Sichtbarkeit
     fig = px.scatter_mapbox(
         df_clean,
         lat='lat',
@@ -1026,11 +1049,20 @@ def create_schulen_map(df):
             [0.5, '#ffcc00'],
             [1.0, '#d62728']
         ],
-        size_max=8,
+        size_max=15,  # Größere Marker für bessere Sichtbarkeit
         zoom=7.5,
         center={'lat': 51.5, 'lon': 7.5},
         mapbox_style='open-street-map',
         title=f'NRW Schulen-Karte: {len(df_clean)} Schulen nach Sozialindex'
+    )
+    
+    # Verbessere Marker-Darstellung (sichtbarer und größer)
+    fig.update_traces(
+        marker=dict(
+            opacity=0.9,  # Leicht transparent für Überlappungen
+            sizemin=4,    # Minimale Markergröße für kleine Schulen
+        ),
+        textposition='top center'
     )
     
     fig.update_layout(
