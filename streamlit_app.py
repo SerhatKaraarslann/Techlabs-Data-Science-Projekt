@@ -946,26 +946,69 @@ def create_schulen_map(df):
     }
     
     # Filtere Schulen mit vollständigen Daten
-    df_clean = df.dropna(subset=['Sozialindex', 'Kreis', 'Schulname']).copy()
-    
-    # Funktion für Koordinaten mit Jitter
-    np.random.seed(42)
-    def get_coords_with_jitter(kreis, index):
-        kreis_norm = str(kreis).replace('ü', 'ue').replace('ö', 'oe').replace('ä', 'ae').replace('ß', 'ss')
-        base_lat, base_lon = 51.5, 7.5
-        
+    df_clean = df.dropna(subset=['Sozialindex', 'Kreis', 'Gemeinde', 'Schulname']).copy()
+
+    def normalize_text(value):
+        return (
+            str(value)
+            .replace('ü', 'ue').replace('ö', 'oe').replace('ä', 'ae').replace('ß', 'ss')
+            .replace('Ü', 'Ue').replace('Ö', 'Oe').replace('Ä', 'Ae')
+            .strip()
+        )
+
+    def get_kreis_center(kreis):
+        kreis_norm = normalize_text(kreis).lower()
         for key, coords in kreis_coords.items():
-            key_norm = key.replace('ü', 'ue').replace('ö', 'oe').replace('ä', 'ae').replace('ß', 'ss')
-            if key_norm.lower() in kreis_norm.lower():
-                base_lat, base_lon = coords
-                break
-        
-        jitter_lat = np.random.uniform(-0.03, 0.03)
-        jitter_lon = np.random.uniform(-0.04, 0.04)
-        return base_lat + jitter_lat, base_lon + jitter_lon
-    
-    # Erstelle Koordinaten
-    coords = [get_coords_with_jitter(row['Kreis'], idx) for idx, row in df_clean.iterrows()]
+            if normalize_text(key).lower() == kreis_norm:
+                return coords
+        for key, coords in kreis_coords.items():
+            if normalize_text(key).lower() in kreis_norm or kreis_norm in normalize_text(key).lower():
+                return coords
+        return (51.5, 7.5)
+
+    # Deterministische Reihenfolge für stabile Positionen
+    sort_cols = [c for c in ['Kreis', 'Gemeinde', 'Schulnummer', 'Schulname'] if c in df_clean.columns]
+    df_clean = df_clean.sort_values(sort_cols).copy()
+
+    # Gemeinde-Anker pro Kreis (statt alle Schulen nur rund um Kreismitte)
+    gemeinde_per_kreis = (
+        df_clean[['Kreis', 'Gemeinde']]
+        .drop_duplicates()
+        .assign(_kreis_norm=lambda d: d['Kreis'].map(normalize_text), _gemeinde_norm=lambda d: d['Gemeinde'].map(normalize_text))
+    )
+
+    gemeinde_anchor = {}
+    for kreis_norm, grp in gemeinde_per_kreis.groupby('_kreis_norm'):
+        kreis_center = get_kreis_center(kreis_norm)
+        is_kreisfreie_stadt = kreis_norm.lower().startswith('stadt ')
+        base_radius = 0.0 if is_kreisfreie_stadt else 0.06
+
+        items = sorted(grp['_gemeinde_norm'].unique())
+        n_items = max(1, len(items))
+
+        for i, gemeinde_norm in enumerate(items):
+            # Gleichmäßige Verteilung der Gemeinden um Kreismitte
+            angle = 2 * np.pi * (i / n_items)
+            lat = kreis_center[0] + base_radius * np.sin(angle)
+            lon = kreis_center[1] + (base_radius * 1.35) * np.cos(angle)
+            gemeinde_anchor[(kreis_norm, gemeinde_norm)] = (lat, lon)
+
+    # Schulen innerhalb derselben Gemeinde als kleine Spirale verteilen
+    df_clean['_kreis_norm'] = df_clean['Kreis'].map(normalize_text)
+    df_clean['_gemeinde_norm'] = df_clean['Gemeinde'].map(normalize_text)
+    df_clean['_schul_idx'] = df_clean.groupby(['_kreis_norm', '_gemeinde_norm']).cumcount()
+
+    def get_school_coords(row):
+        anchor = gemeinde_anchor.get((row['_kreis_norm'], row['_gemeinde_norm']), get_kreis_center(row['_kreis_norm']))
+        idx = int(row['_schul_idx'])
+        # Sonnenblumen-Spirale: trennt Punkte sauber, bleibt aber lokal
+        r = 0.0012 * np.sqrt(idx + 1)
+        theta = idx * 2.399963229728653  # golden angle
+        lat = anchor[0] + r * np.sin(theta)
+        lon = anchor[1] + (r * 1.4) * np.cos(theta)
+        return lat, lon
+
+    coords = [get_school_coords(row) for _, row in df_clean.iterrows()]
     df_clean['lat'] = [c[0] for c in coords]
     df_clean['lon'] = [c[1] for c in coords]
     
@@ -1458,6 +1501,7 @@ def main():
                     - **Alle 4.142 Schulen** sind als Punkte auf der Karte sichtbar
                     - Zoom in einzelne Städte (z.B. Münster: 70 Schulen) um Details zu sehen
                     - Geografische Verteilung der Schulqualität über ganz NRW
+                    - Positionen sind **gemeindebasiert und deterministisch verteilt** (ohne exakte Straßenkoordinaten)
                         """)
         
         # Ergänzungen
