@@ -1080,7 +1080,7 @@ def main():
              "Gymnasium-Ebene (VIZ 105-107)",
              "Gymnasium Extended (VIZ 200-203)",
                "Ergänzungen (VIZ 01-05)",
-               "Karten (VIZ 300)"]
+               "Karten (VIZ 300-301)"]
         )
         
         # Stadt-Ebene
@@ -1264,42 +1264,69 @@ def main():
                     """)
 
         # Karten
-        elif category == "Karten (VIZ 300)":
-            st.subheader("VIZ 300: NRW Kartenansicht (dynamisch)")
-            geojson_data = load_default_nrw_geojson()
-
-            if geojson_data is None:
-                st.error("❌ NRW-GeoJSON nicht gefunden. Bitte Datei in data/input/deutschland_kreise.geojson ablegen.")
-            else:
-                metric_col = st.selectbox(
-                    "Kennzahl",
-                    [
-                        "Anzahl Schulen",
-                        "Ø Sozialindex",
-                        "Ø Einkommen (€/Einw.)",
-                        "Ø Einwohnerzahl",
-                        "Ø Bildungsausgaben (€)",
-                        "Ø Schüler/Lehrkraft"
-                    ]
-                )
-
-                try:
-                    fig = create_kreis_choropleth(df, geojson_data, 'NAME_3', metric_col)
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Rendern der Karte: {str(e)}")
+        elif category == "Karten (VIZ 300-301)":
+            viz = st.sidebar.radio(
+                "Visualisierung:",
+                ["VIZ 300: NRW Choropleth-Karte (Kreise)",
+                 "VIZ 301: Schulen-Karte (Gemeinden)"]
+            )
             
-                st.subheader("VIZ 203: Gymnasium-Dichte vs. Sozialindex")
-                st.plotly_chart(create_kreis_gymnasium_dichte(df), use_container_width=True)
-                with st.expander("ℹ️ Interpretation"):
-                    st.write("""
-                    - **Bubble-Größe:** Einkommen pro Einwohner
-                    - **Farbe:** Betreuungsrelation (grün = besser, rot = schlechter)
-                    - Kreise mit vielen Gymnasien haben tendenziell **bessere Sozialindizes**
-                    - Wohlhabende Großstädte (große grüne Bubbles) dominieren
-                    - Ländliche Regionen mit wenigen Gymnasien oft benachteiligt
-                    """)
-        
+            if "300" in viz:
+                st.subheader("VIZ 300: NRW Kartenansicht (dynamisch)")
+                geojson_data = load_default_nrw_geojson()
+
+                if geojson_data is None:
+                    st.error("❌ NRW-GeoJSON nicht gefunden. Bitte Datei in data/input/deutschland_kreise.geojson ablegen.")
+                else:
+                    metric_col = st.selectbox(
+                        "Kennzahl",
+                        [
+                            "Anzahl Schulen",
+                            "Ø Sozialindex",
+                            "Ø Einkommen (€/Einw.)",
+                            "Ø Einwohnerzahl",
+                            "Ø Bildungsausgaben (€)",
+                            "Ø Schüler/Lehrkraft"
+                        ]
+                    )
+
+                    try:
+                        fig = create_kreis_choropleth(df, geojson_data, 'NAME_3', metric_col)
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"❌ Fehler beim Rendern der Karte: {str(e)}")
+                
+                    st.subheader("VIZ 203: Gymnasium-Dichte vs. Sozialindex")
+                    st.plotly_chart(create_kreis_gymnasium_dichte(df), use_container_width=True)
+                    with st.expander("ℹ️ Interpretation"):
+                        st.write("""
+                        - **Bubble-Größe:** Einkommen pro Einwohner
+                        - **Farbe:** Betreuungsrelation (grün = besser, rot = schlechter)
+                        - Kreise mit vielen Gymnasien haben tendenziell **bessere Sozialindizes**
+                        - Wohlhabende Großstädte (große grüne Bubbles) dominieren
+                        - Ländliche Regionen mit wenigen Gymnasien oft benachteiligt
+                        """)
+            
+            elif "301" in viz:
+                st.subheader("VIZ 301: Schulen-Karte - Gemeinden mit Informationen")
+                
+                # Lade die HTML-Datei
+                viz_file = 'data/output/viz_plotly_301_schulen_map.html'
+                if os.path.exists(viz_file):
+                    with open(viz_file, 'r', encoding='utf-8') as f:
+                        html_content = f.read()
+                    st.components.v1.html(html_content, height=800, scrolling=True)
+                    
+                    with st.expander("ℹ️ Interpretation"):
+                        st.write("""
+                        - **Farbe:** Durchschnittlicher Sozialindex pro Gemeinde (Grün = gut, Rot = schlecht)
+                        - **Größe:** Anzahl der Schulen in der Gemeinde
+                        - **Hover:** Zeigt Gemeinde, Kreis, Anzahl Schulen, Sozialindex, Betreuung, Einkommen
+                        - Geografische Verteilung der Schulqualität sichtbar
+                        - Ballungsräume (größere Punkte) vs. ländliche Regionen
+                        """)
+                else:
+                    st.error("❌ Schulen-Karte nicht gefunden. Bitte `python3 code/visualize_plotly_schulen_map.py` ausführen.")        
         # Ergänzungen
         else:  # Ergänzungen (VIZ 01-05)
             viz = st.sidebar.radio(

@@ -282,15 +282,16 @@ top10 = stadt_agg.nlargest(10, 'Sozialindex_Avg').sort_values('Sozialindex_Avg',
 
 fig4 = make_subplots(
     rows=1, cols=2,
-    subplot_titles=('Bottom 10 - Beste Städte (Niedrig)', 'Top 10 - Schlechteste Städte (Hoch)'),
+    subplot_titles=('10 Beste Städte/Kreise (Niedriger SI)', '10 Schlechteste Städte/Kreise (Hoher SI)'),
     specs=[[{'type': 'bar'}, {'type': 'bar'}]],
     horizontal_spacing=0.12
 )
 
-# Bar-Charts für Top 10 und Bottom 10 Städte mit korrekten Farben
-# GRÜN = Gute Städte (niedrig), ROT/ORANGE = Schlechte Städte (hoch)
+# Bar-Charts: LINKS = BESTE (Grün), RECHTS = SCHLECHTESTE (Rot)
+# GRÜN = Gute Städte (niedriger Sozialindex)
+# ROT = Schlechte Städte (hoher Sozialindex)
 
-# Bottom 10 (BESTE) - Grün
+# LINKS: 10 BESTE Städte - Grün
 fig4.add_trace(go.Bar(
     y=bottom10['Stadt'],
     x=bottom10['Sozialindex_Avg'],
@@ -298,11 +299,11 @@ fig4.add_trace(go.Bar(
     marker=dict(color='#2ca02c', line=dict(color='#1b5e0f', width=1)),
     text=bottom10['Sozialindex_Avg'].round(2),
     textposition='outside',
-    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (GUT)<extra></extra>',
+    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (GUT - Niedrig)<extra></extra>',
     showlegend=False
 ), row=1, col=1)
 
-# Top 10 (SCHLECHTESTE) - Rot
+# RECHTS: 10 SCHLECHTESTE Städte - Rot
 fig4.add_trace(go.Bar(
     y=top10['Stadt'],
     x=top10['Sozialindex_Avg'],
@@ -310,15 +311,15 @@ fig4.add_trace(go.Bar(
     marker=dict(color='#d62728', line=dict(color='#8b0000', width=1)),
     text=top10['Sozialindex_Avg'].round(2),
     textposition='outside',
-    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (SCHLECHT)<extra></extra>',
+    hovertemplate='<b>%{y}</b><br>Sozialindex: %{x:.2f} (SCHLECHT - Hoch)<extra></extra>',
     showlegend=False
 ), row=1, col=2)
 
-fig4.update_xaxes(title_text='Sozialindex (Niedrig = Besser)', row=1, col=1)
-fig4.update_xaxes(title_text='Sozialindex (Hoch = Schlechter)', row=1, col=2)
+fig4.update_xaxes(title_text='Sozialindex (Niedriger = Besser)', row=1, col=1)
+fig4.update_xaxes(title_text='Sozialindex (Höher = Schlechter)', row=1, col=2)
 
 fig4.update_layout(
-    title='Top/Bottom 10 Städte nach Sozialindex<br><sub>Sozialindex ist umgekehrt: Niedrig = GUT, Hoch = SCHLECHT</sub>',
+    title='10 Beste vs. 10 Schlechteste Städte/Kreise nach Sozialindex<br><sub>GRÜN = Gut (niedriger Sozialindex), ROT = Schlecht (hoher Sozialindex)</sub>',
     width=1400,
     height=600,
     template='plotly_white'

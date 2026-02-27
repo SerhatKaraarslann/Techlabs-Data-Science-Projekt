@@ -77,8 +77,9 @@ Das Dashboard bietet 3 Modi mit 18 interaktiven Visualisierungen:
 - VIZ 04: Spreizungs-Ranking
 - VIZ 05: Schulformen Donut
 
-**Karte (VIZ 300)**
-- VIZ 300: NRW Choropleth-Karte (interaktiv)
+**Karten (VIZ 300-301)**
+- VIZ 300: NRW Choropleth-Karte (Kreise/Städte)
+- VIZ 301: Schulen-Karte (4.142 einzelne Schulen)
 
 ---
 
@@ -247,12 +248,12 @@ Live unter: https://nrw-bildungsanalyse.streamlit.app
 
 | Aspekt | Details |
 |--------|---------|
-| Version | 2.0.0 |
-| Letztes Update | 2026-02-20 |
+| Version | 2.1.0 |
+| Letztes Update | 2026-02-27 |
 | Status | Production Ready |
 | Schulen | 4.142 (NRW) |
 | Kreise | 53 |
-| Visualisierungen | 18 + 1 Karte |
+| Visualisierungen | 18 + 2 Karten |
 
 ---
 
