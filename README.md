@@ -79,7 +79,7 @@ Das Dashboard bietet 3 Modi mit 18 interaktiven Visualisierungen:
 
 **Karten (VIZ 300-301)**
 - VIZ 300: NRW Choropleth-Karte (Kreise/Städte)
-- VIZ 301: Schulen-Karte (4.142 einzelne Schulen)
+- VIZ 301: Schulen-Karte (4.142 Schulen an echten Standorten mit GPS-Koordinaten)
 
 ---
 
@@ -101,12 +101,14 @@ Das Dashboard bietet 3 Modi mit 18 interaktiven Visualisierungen:
 | Sozialindex (1-9) | Schule | IT.NRW |
 | Einkommen, Einwohnerzahl, Bildungsausgaben | Kreis | VGR 2022 |
 | Schüler/Lehrkraft Ratio | Schule | IT.NRW |
+| GPS-Koordinaten (lat/lon), Adresse | Schule | NRW INSPIRE OGC API |
 
 ### Datenqualität
 
 - **Sozialindex**: Individuell pro Schule (1=besser, 9=schlechter)
 - **Einkommen/Einwohnerzahl**: Auf Kreis-Ebene (alle Schulen im Kreis identisch)
 - **Betreuungsrelation**: Unterschiede nach Schulform und einzelner Schule
+- **GPS-Koordinaten**: Echte Schulstandorte von offizieller NRW INSPIRE OGC API (100% Coverage)
 
 ---
 
@@ -145,6 +147,8 @@ Techlabs-Data-Science-Projekt-1/
 │   └── config.toml
 ├── code/
 │   ├── data_merge_extended.py       # Datenmerge
+│   ├── load_schools_from_ogc_api.py # OGC API Schuladressen
+│   ├── check_coverage.py            # Coverage-Check
 │   ├── visualize_plotly_all.py      # VIZ 100-107
 │   ├── visualize_plotly_interactive.py # VIZ 01-05
 │   └── visualize_plotly_gymnasium_extended.py # VIZ 200-203
@@ -157,6 +161,7 @@ Techlabs-Data-Science-Projekt-1/
     │   └── deutschland_kreise.geojson
     └── output/
         ├── merged_schuldaten_extended.csv
+        ├── schulen_adressen_ogc_cache.csv # 5.423 Schulen mit GPS
         └── viz_plotly_*.html (18 Dateien)
 ```
 
@@ -170,12 +175,15 @@ Techlabs-Data-Science-Projekt-1/
 # 2. Daten mergen
 python3 code/data_merge_extended.py
 
-# 3. Visualisierungen regenerieren
+# 3. Schuladressen aktualisieren (optional, falls neue Schulen)
+python3 code/load_schools_from_ogc_api.py
+
+# 4. Visualisierungen regenerieren
 python3 code/visualize_plotly_all.py
 python3 code/visualize_plotly_interactive.py
 python3 code/visualize_plotly_gymnasium_extended.py
 
-# 4. Dashboard neu starten
+# 5. Dashboard neu starten
 streamlit run streamlit_app.py
 ```
 
