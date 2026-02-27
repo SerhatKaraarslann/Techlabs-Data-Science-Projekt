@@ -970,30 +970,22 @@ def create_schulen_map(df):
     sort_cols = [c for c in ['Kreis', 'Gemeinde', 'Schulnummer', 'Schulname'] if c in df_clean.columns]
     df_clean = df_clean.sort_values(sort_cols).copy()
 
-    # Gemeinde-Anker pro Kreis (statt alle Schulen nur rund um Kreismitte)
-    gemeinde_per_kreis = (
-        df_clean[['Kreis', 'Gemeinde']]
-        .drop_duplicates()
-        .assign(_kreis_norm=lambda d: d['Kreis'].map(normalize_text), _gemeinde_norm=lambda d: d['Gemeinde'].map(normalize_text))
-    )
-
+    # Gemeinde-Koordinaten aus Cache (vorab geokodiert) laden
+    cache_path = os.path.join(os.path.dirname(__file__), 'data', 'output', 'gemeinde_coords_cache.csv')
     gemeinde_anchor = {}
-    for kreis_norm, grp in gemeinde_per_kreis.groupby('_kreis_norm'):
-        kreis_center = get_kreis_center(kreis_norm)
-        is_kreisfreie_stadt = kreis_norm.lower().startswith('stadt ')
-        base_radius = 0.0 if is_kreisfreie_stadt else 0.06
+    if os.path.exists(cache_path):
+        try:
+            cache_df = pd.read_csv(cache_path)
+            cache_df = cache_df.dropna(subset=['Kreis', 'Gemeinde', 'lat', 'lon']).copy()
+            cache_df['_kreis_norm'] = cache_df['Kreis'].map(normalize_text)
+            cache_df['_gemeinde_norm'] = cache_df['Gemeinde'].map(normalize_text)
+            for _, r in cache_df.iterrows():
+                gemeinde_anchor[(r['_kreis_norm'], r['_gemeinde_norm'])] = (float(r['lat']), float(r['lon']))
+        except Exception:
+            gemeinde_anchor = {}
 
-        items = sorted(grp['_gemeinde_norm'].unique())
-        n_items = max(1, len(items))
-
-        for i, gemeinde_norm in enumerate(items):
-            # Gleichmäßige Verteilung der Gemeinden um Kreismitte
-            angle = 2 * np.pi * (i / n_items)
-            lat = kreis_center[0] + base_radius * np.sin(angle)
-            lon = kreis_center[1] + (base_radius * 1.35) * np.cos(angle)
-            gemeinde_anchor[(kreis_norm, gemeinde_norm)] = (lat, lon)
-
-    # Schulen innerhalb derselben Gemeinde als kleine Spirale verteilen
+    # Schulen innerhalb derselben Gemeinde als sehr kleine Spirale verteilen
+    # (nur zur Trennung überlappender Marker)
     df_clean['_kreis_norm'] = df_clean['Kreis'].map(normalize_text)
     df_clean['_gemeinde_norm'] = df_clean['Gemeinde'].map(normalize_text)
     df_clean['_schul_idx'] = df_clean.groupby(['_kreis_norm', '_gemeinde_norm']).cumcount()
@@ -1001,11 +993,11 @@ def create_schulen_map(df):
     def get_school_coords(row):
         anchor = gemeinde_anchor.get((row['_kreis_norm'], row['_gemeinde_norm']), get_kreis_center(row['_kreis_norm']))
         idx = int(row['_schul_idx'])
-        # Sonnenblumen-Spirale: trennt Punkte sauber, bleibt aber lokal
-        r = 0.0012 * np.sqrt(idx + 1)
+        # Sehr kleine Spirale um den Gemeinde-Anker (realistischere Lage)
+        r = 0.00035 * np.sqrt(idx + 1)
         theta = idx * 2.399963229728653  # golden angle
         lat = anchor[0] + r * np.sin(theta)
-        lon = anchor[1] + (r * 1.4) * np.cos(theta)
+        lon = anchor[1] + (r * 1.25) * np.cos(theta)
         return lat, lon
 
     coords = [get_school_coords(row) for _, row in df_clean.iterrows()]
