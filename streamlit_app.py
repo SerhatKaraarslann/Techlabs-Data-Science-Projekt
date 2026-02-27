@@ -472,33 +472,38 @@ def create_sozialindex_betreuung(df):
     return fig
 
 def create_top_bottom_cities(df):
-    """VIZ 103: Top & Bottom 10 Städte"""
+    """VIZ 103: Beste & Schlechteste 10 Städte (Sozialindex: niedrig=gut, hoch=schlecht)"""
     stadt_agg = df.groupby('Kreis').agg({
         'Sozialindex': 'mean'
     }).reset_index()
     
-    top10 = stadt_agg.nlargest(10, 'Sozialindex')
-    bottom10 = stadt_agg.nsmallest(10, 'Sozialindex')
+    # WICHTIG: Sozialindex ist umgekehrt!
+    # niedrig = GUT (beste Städte) -> GRÜN
+    # hoch = SCHLECHT (schlechteste Städte) -> ROT
+    beste10 = stadt_agg.nsmallest(10, 'Sozialindex')  # Niedrigste = Beste
+    schlechteste10 = stadt_agg.nlargest(10, 'Sozialindex')  # Höchste = Schlechteste
     
     fig = make_subplots(
         rows=1, cols=2,
-        subplot_titles=('Top 10 Städte/Kreise', 'Bottom 10 Städte/Kreise')
+        subplot_titles=('10 Beste Städte/Kreise (Niedriger SI)', '10 Schlechteste Städte/Kreise (Hoher SI)')
     )
     
+    # LINKS: Beste Städte (niedrigster Sozialindex) - GRÜN
     fig.add_trace(
-        go.Bar(x=top10['Sozialindex'], y=top10['Kreis'],
-               orientation='h', marker_color='green', name='Top 10'),
+        go.Bar(x=beste10['Sozialindex'], y=beste10['Kreis'],
+               orientation='h', marker_color='#2ca02c', name='Beste'),
         row=1, col=1
     )
     
+    # RECHTS: Schlechteste Städte (höchster Sozialindex) - ROT
     fig.add_trace(
-        go.Bar(x=bottom10['Sozialindex'], y=bottom10['Kreis'],
-               orientation='h', marker_color='red', name='Bottom 10'),
+        go.Bar(x=schlechteste10['Sozialindex'], y=schlechteste10['Kreis'],
+               orientation='h', marker_color='#d62728', name='Schlechteste'),
         row=1, col=2
     )
     
     fig.update_layout(
-        title_text="Top & Bottom 10 Kreise/Städte nach Sozialindex",
+        title_text="10 Beste vs. 10 Schlechteste Städte/Kreise<br><sub>GRÜN = Gut (niedriger SI), ROT = Schlecht (hoher SI)</sub>",
         height=600,
         showlegend=False
     )
@@ -1090,7 +1095,7 @@ def main():
                 ["VIZ 100: Korrelations-Heatmap",
                  "VIZ 101: Einkommen vs. Sozialindex",
                  "VIZ 102: Sozialindex vs. Betreuung",
-                 "VIZ 103: Top & Bottom 10 Städte",
+                 "VIZ 103: Beste & Schlechteste 10 Städte",
                  "VIZ 104: Stadtgröße-Vergleich"]
             )
             
@@ -1139,15 +1144,15 @@ def main():
                     """)
             
             elif "103" in viz:
-                st.subheader("VIZ 103: Top & Bottom 10 Städte")
+                st.subheader("VIZ 103: Beste & Schlechteste 10 Städte")
                 st.plotly_chart(create_top_bottom_cities(df), use_container_width=True)
                 top_si, bottom_si = top_bottom_kreise_by(df, 'Sozialindex', n=3)
                 top_si_str = ", ".join(top_si) if top_si else "—"
                 bottom_si_str = ", ".join(bottom_si) if bottom_si else "—"
                 with st.expander("ℹ️ Interpretation"):
                     st.write(f"""
-                    - **Top-Städte (niedrigster Sozialindex):** {bottom_si_str}
-                    - **Bottom-Städte (höchster Sozialindex):** {top_si_str}
+                    - **Beste Städte (niedrigster Sozialindex, GRÜN):** {bottom_si_str}
+                    - **Schlechteste Städte (höchster Sozialindex, ROT):** {top_si_str}
                     - Deutliche regionale Disparitäten sichtbar
                     """)
             
