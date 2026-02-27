@@ -136,9 +136,10 @@ def get_coords_with_jitter(kreis, gemeinde, index):
             base_lat, base_lon = coords
             break
     
-    # Füge größeren Jitter hinzu damit Schulen im gleichen Kreis verteilt sind
-    jitter_lat = np.random.uniform(-0.15, 0.15)
-    jitter_lon = np.random.uniform(-0.20, 0.20)
+    # Kleinerer Jitter: ca. 2-3 km Radius (0.03 Grad ≈ 3 km)
+    # Damit bleiben Schulen in der Stadt/Kreis sichtbar gruppiert
+    jitter_lat = np.random.uniform(-0.03, 0.03)
+    jitter_lon = np.random.uniform(-0.04, 0.04)
     
     return base_lat + jitter_lat, base_lon + jitter_lon
 
@@ -171,8 +172,8 @@ fig = px.scatter_mapbox(
         [0.5, '#ffcc00'],   # Gelb für mittel
         [1.0, '#d62728']    # Rot für hoch (schlecht)
     ],
-    size_max=12,
-    zoom=7,
+    size_max=8,
+    zoom=7.5,
     center={'lat': 51.5, 'lon': 7.5},
     mapbox_style='open-street-map',
     title=f'NRW Schulen-Karte: {len(df_clean)} Schulen nach Sozialindex'
