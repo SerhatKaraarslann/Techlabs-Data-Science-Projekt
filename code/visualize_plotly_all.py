@@ -181,29 +181,51 @@ print(f"   [OK] Gespeichert: viz_plotly_100_korrelation_heatmap.html")
 # VIZ 2: Einkommen vs. Sozialindex
 print(f"\n [2/11] Erstelle: Einkommen vs. Sozialindex...")
 
-colors = ['#d62728' if m else '#1f77b4' for m in stadt_agg['Ist_Muenster']]
-
 fig2 = go.Figure()
 
-# Alle Punkte außer Münster (Referenz) in Blau, Münster in Grün mit Hervorhebung
+# Erstelle Farbskalierung basierend auf Sozialindex
+# Niedrig (gut) = Grün, Hoch (schlecht) = Rot
+min_si = stadt_agg['Sozialindex_Avg'].min()
+max_si = stadt_agg['Sozialindex_Avg'].max()
+
+# Normalisiere Sozialindex auf 0-1 für Farbzuordnung
+si_range = max_si - min_si
+if si_range == 0:
+    stadt_agg['Farb_Wert'] = 0.5
+else:
+    stadt_agg['Farb_Wert'] = (stadt_agg['Sozialindex_Avg'] - min_si) / si_range
+
+# Erstelle Farben: 0 (niedrig) = Grün (#2ca02c), 1 (hoch) = Rot (#d62728)
+def get_color(farb_wert):
+    # Interpolation von Gruen (44,160,44) nach Rot (214,39,40)
+    r = int(44 + (214 - 44) * farb_wert)
+    g = int(160 + (39 - 160) * farb_wert)
+    b = int(44 + (40 - 44) * farb_wert)
+    return f'rgb({r},{g},{b})'
+
+stadt_agg['Farbe'] = stadt_agg['Farb_Wert'].apply(get_color)
+
+# Alle Städte außer Münster: Farbcodierung nach Sozialindex
+ohne_muenster = stadt_agg[~stadt_agg['Ist_Muenster']]
+muenster = stadt_agg[stadt_agg['Ist_Muenster']]
+
 fig2.add_trace(go.Scatter(
-    x=stadt_agg[~stadt_agg['Ist_Muenster']]['Einkommen_Avg'], # Durchschnitt Einkommen pro Einwohner
-    y=stadt_agg[~stadt_agg['Ist_Muenster']]['Sozialindex_Avg'], # Durchschnitt Sozialindex
+    x=ohne_muenster['Einkommen_Avg'], # Durchschnitt Einkommen pro Einwohner
+    y=ohne_muenster['Sozialindex_Avg'], # Durchschnitt Sozialindex
     mode='markers', 
-    marker=dict(size=10, color='#1f77b4', opacity=0.6, line=dict(color='black', width=1)), # Blau für andere Städte
-    text=stadt_agg[~stadt_agg['Ist_Muenster']]['Stadt'], # Stadtname als Hover-Text
-    hovertemplate='<b>%{text}</b><br>Einkommen: €%{x:.0f}<br>Sozialindex: %{y:.2f}<extra></extra>', # Hover-Template mit Stadtname, Einkommen und Sozialindex
-    name='Andere Städte' 
+    marker=dict(size=10, color=ohne_muenster['Farbe'], opacity=0.7, line=dict(color='black', width=1)), # Farbe basierend auf Sozialindex
+    text=ohne_muenster['Stadt'], # Stadtname als Hover-Text
+    hovertemplate='<b>%{text}</b><br>Einkommen: €%{x:.0f}<br>Sozialindex: %{y:.2f}<extra></extra>', # Hover-Template
+    name='Andere Städte'
 ))
 
-# Münster hervorheben
-muenster = stadt_agg[stadt_agg['Ist_Muenster']]
+# Münster als Referenz separat hervorheben
 if not muenster.empty:
     fig2.add_trace(go.Scatter(
         x=muenster['Einkommen_Avg'],
         y=muenster['Sozialindex_Avg'],
         mode='markers+text',
-        marker=dict(size=15, color="#14ff27", line=dict(color='darkred', width=2)),
+        marker=dict(size=16, color='#1f77b4', line=dict(color='#0b3d91', width=2)),
         text=['Münster (Referenz)'],
         textposition='top center',
         hovertemplate='<b>%{text}</b><br>Einkommen: €%{x:.0f}<br>Sozialindex: %{y:.2f}<extra></extra>',
@@ -212,9 +234,9 @@ if not muenster.empty:
 
 # Layout anpassen und Achsen beschriften
 fig2.update_layout( 
-    title='Einkommen vs. Sozialindex in NRW Städten',
+    title='Einkommen vs. Sozialindex in NRW Städten<br><sub>Grün = guter Sozialindex (niedrig), Rot = schlechter Sozialindex (hoch), Münster = Blau</sub>',
     xaxis_title='Durchschnitt Einkommen pro Einwohner (EUR)',
-    yaxis_title='Durchschnitt Sozialindex',
+    yaxis_title='Durchschnitt Sozialindex (Niedrig = Besser)',
     width=1000,
     height=600,
     template='plotly_white',
