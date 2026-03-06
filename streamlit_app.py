@@ -426,24 +426,37 @@ def create_einkommen_sozialindex(df):
         'Sozialindex': 'mean',
         'Einkommen_Pro_Einwohner_Euro': 'mean'
     }).reset_index()
-    
-    fig = px.scatter(
-        stadt_agg,
-        x='Einkommen_Pro_Einwohner_Euro',
-        y='Sozialindex',
-        text='Kreis',
+
+    fig = go.Figure()
+
+    # Niedriger Sozialindex = Gruen, hoher Sozialindex = Rot
+    fig.add_trace(go.Scatter(
+        x=stadt_agg['Einkommen_Pro_Einwohner_Euro'],
+        y=stadt_agg['Sozialindex'],
+        mode='markers+text',
+        text=stadt_agg['Kreis'],
+        textposition='top center',
+        textfont=dict(size=8),
+        name='Kreise/Städte',
+        marker=dict(
+            size=9,
+            color=stadt_agg['Sozialindex'],
+            colorscale=[[0, '#2ca02c'], [1, '#d62728']],
+            cmin=stadt_agg['Sozialindex'].min(),
+            cmax=stadt_agg['Sozialindex'].max(),
+            colorbar=dict(title='Durchschnittlicher Sozialindex'),
+            line=dict(color='black', width=0.7)
+        ),
+        hovertemplate='<b>%{text}</b><br>Einkommen: €%{x:.0f}<br>Sozialindex: %{y:.2f}<extra></extra>'
+    ))
+
+    fig.update_layout(
         title='Einkommen vs. Sozialindex pro Kreis/Stadt',
-        labels={
-            'Einkommen_Pro_Einwohner_Euro': 'Einkommen pro Einwohner (€)',
-            'Sozialindex': 'Durchschnittlicher Sozialindex'
-        },
-        color='Sozialindex',
-        color_continuous_scale='RdYlGn',
-        size_max=15
+        xaxis_title='Einkommen pro Einwohner (€)',
+        yaxis_title='Durchschnittlicher Sozialindex',
+        height=600,
+        showlegend=True
     )
-    
-    fig.update_traces(textposition='top center', textfont_size=8)
-    fig.update_layout(height=600, showlegend=False)
     return fig
 
 def create_sozialindex_betreuung(df):
