@@ -444,7 +444,7 @@ def create_einkommen_sozialindex(df):
             colorscale=[[0, '#2ca02c'], [1, '#d62728']],
             cmin=stadt_agg['Sozialindex'].min(),
             cmax=stadt_agg['Sozialindex'].max(),
-            colorbar=dict(title='Durchschnittlicher Sozialindex'),
+            colorbar=dict(title='Sozialindex'),
             line=dict(color='black', width=0.7)
         ),
         hovertemplate='<b>%{text}</b><br>Einkommen: €%{x:.0f}<br>Sozialindex: %{y:.2f}<extra></extra>'
@@ -455,7 +455,7 @@ def create_einkommen_sozialindex(df):
         xaxis_title='Einkommen pro Einwohner (€)',
         yaxis_title='Durchschnittlicher Sozialindex',
         height=600,
-        showlegend=True
+        showlegend=False
     )
     return fig
 
